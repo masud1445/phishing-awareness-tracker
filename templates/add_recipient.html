@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Add Recipient | Phishing Awareness Tracker</title>
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+
+<body>
+
+<header class="topbar">
+    <div class="brand">
+        <div class="logo">PA</div>
+
+        <div>
+            <h1>Phishing Awareness Tracker</h1>
+            <p>Security Awareness & Phishing Analytics</p>
+        </div>
+    </div>
+
+    <div class="status">
+        ● Authorized Training Environment
+    </div>
+</header>
+
+
+<main class="container">
+
+    <a class="back-link"
+       href="{{ url_for('campaign_recipients', campaign_id=campaign.id) }}">
+        ← Back to Campaign
+    </a>
+
+
+    <section class="recipient-hero">
+
+        <div>
+            <span class="hero-label">NEW RECIPIENT</span>
+
+            <h2>Add Campaign Recipient</h2>
+
+            <p>
+                Add an approved internal recipient to
+                <strong>{{ campaign.campaign_name }}</strong>.
+            </p>
+        </div>
+
+        <div class="campaign-id-badge">
+            <span>Campaign ID</span>
+            <strong>#{{ campaign.id }}</strong>
+        </div>
+
+    </section>
+
+
+    <section class="form-card" style="margin-top: 20px;">
+
+        <form method="POST">
+
+            <div class="form-grid">
+
+                <div class="form-group full-width">
+                    <label for="full_name">Full Name</label>
+
+                    <input
+                        type="text"
+                        id="full_name"
+                        name="full_name"
+                        placeholder="Enter recipient full name"
+                        required>
+                </div>
+
+
+                <div class="form-group">
+                    <label for="email">Email Address</label>
+
+                    <input
+                        type="email"
+                        id="email"
+                        name="email"
+                        placeholder="name@company.com"
+                        required>
+                </div>
+
+
+                <div class="form-group">
+                    <label for="department">Department</label>
+
+                    <input
+                        type="text"
+                        id="department"
+                        name="department"
+                        placeholder="Example: Finance">
+                </div>
+
+
+                <div class="form-group full-width">
+
+                    <div class="authorization-box">
+                        <span>
+                            ✓ This recipient must be an approved participant
+                            in the organization's phishing awareness campaign.
+                        </span>
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <div class="form-actions">
+
+                <a class="btn-secondary"
+                   href="{{ url_for('campaign_recipients', campaign_id=campaign.id) }}">
+                    Cancel
+                </a>
+
+                <button class="btn" type="submit">
+                    Add Recipient →
+                </button>
+
+            </div>
+
+        </form>
+
+    </section>
+
+
+    <div class="footer">
+        CyberAssess · Phishing Awareness Tracker · Authorized Internal Use
+    </div>
+
+</main>
+
+</body>
+</html>

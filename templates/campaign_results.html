@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Campaign Results | Phishing Awareness Tracker</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: #f5f7fb;
+            color: #172033;
+        }
+
+        .topbar {
+            background: linear-gradient(135deg, #12375f, #1d5594);
+            color: white;
+            padding: 18px 30px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .brand-logo {
+            width: 50px;
+            height: 50px;
+            border-radius: 14px;
+            background: linear-gradient(135deg, #5b8cff, #8257f5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 21px;
+            font-weight: 800;
+        }
+
+        .brand h1 {
+            margin: 0;
+            font-size: 23px;
+        }
+
+        .brand p {
+            margin: 3px 0 0;
+            opacity: .85;
+            font-size: 13px;
+        }
+
+        .status-pill {
+            border: 1px solid rgba(255,255,255,.25);
+            background: rgba(255,255,255,.10);
+            padding: 10px 16px;
+            border-radius: 999px;
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .container {
+            max-width: 1180px;
+            margin: 0 auto;
+            padding: 35px 24px 60px;
+        }
+
+        .back-link {
+            text-decoration: none;
+            color: #2468e8;
+            font-weight: 700;
+            display: inline-block;
+            margin-bottom: 20px;
+        }
+
+        .hero {
+            background: linear-gradient(135deg, #ffffff 20%, #eef4ff 60%, #eadfff);
+            border: 1px solid #e0e6f0;
+            border-radius: 24px;
+            padding: 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 20px;
+            box-shadow: 0 14px 32px rgba(35, 55, 90, .07);
+        }
+
+        .eyebrow {
+            display: inline-block;
+            background: #eaf3ff;
+            color: #1765df;
+            font-size: 12px;
+            font-weight: 800;
+            padding: 8px 13px;
+            border-radius: 999px;
+            margin-bottom: 12px;
+        }
+
+        .hero h2 {
+            margin: 0;
+            font-size: 34px;
+            line-height: 1.15;
+        }
+
+        .hero p {
+            margin: 12px 0 0;
+            color: #61708b;
+            font-size: 15px;
+        }
+
+        .campaign-id {
+            min-width: 118px;
+            text-align: center;
+            color: white;
+            padding: 20px;
+            border-radius: 18px;
+            background: linear-gradient(135deg, #2866ef, #7140ef);
+            box-shadow: 0 12px 25px rgba(86, 69, 233, .25);
+        }
+
+        .campaign-id small {
+            display: block;
+            font-size: 11px;
+            letter-spacing: 1px;
+            margin-bottom: 5px;
+        }
+
+        .campaign-id strong {
+            font-size: 26px;
+        }
+
+        .campaign-meta {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-top: 20px;
+        }
+
+        .meta-card,
+        .metric-card,
+        .panel {
+            background: white;
+            border: 1px solid #dfe5ef;
+            border-radius: 18px;
+        }
+
+        .meta-card {
+            padding: 18px;
+        }
+
+        .meta-card span {
+            display: block;
+            color: #748199;
+            font-size: 12px;
+            margin-bottom: 7px;
+        }
+
+        .meta-card strong {
+            font-size: 15px;
+        }
+
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 14px;
+            margin-top: 20px;
+        }
+
+        .metric-card {
+            padding: 20px;
+            border-top: 4px solid;
+        }
+
+        .metric-card:nth-child(1) { border-top-color: #2b6ef3; }
+        .metric-card:nth-child(2) { border-top-color: #7b3ff2; }
+        .metric-card:nth-child(3) { border-top-color: #10a66a; }
+        .metric-card:nth-child(4) { border-top-color: #f05c19; }
+        .metric-card:nth-child(5) { border-top-color: #08a06d; }
+
+        .metric-label {
+            color: #6f7d95;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .metric-value {
+            font-size: 30px;
+            font-weight: 800;
+            margin-top: 8px;
+        }
+
+        .metric-sub {
+            color: #758198;
+            font-size: 11px;
+            margin-top: 7px;
+        }
+
+        .panel {
+            margin-top: 20px;
+            padding: 24px;
+            overflow-x: auto;
+        }
+
+        .panel-heading {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .panel-heading h3 {
+            margin: 0;
+            font-size: 21px;
+        }
+
+        .panel-heading p {
+            margin: 5px 0 0;
+            color: #718099;
+            font-size: 13px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 900px;
+        }
+
+        th {
+            text-align: left;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: .5px;
+            color: #758198;
+            padding: 13px 12px;
+            background: #f7f9fc;
+            border-bottom: 1px solid #e4e9f1;
+        }
+
+        td {
+            padding: 16px 12px;
+            border-bottom: 1px solid #edf0f5;
+            font-size: 13px;
+            vertical-align: middle;
+        }
+
+        .person strong {
+            display: block;
+            font-size: 14px;
+        }
+
+        .person span {
+            color: #718099;
+            font-size: 12px;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 7px 11px;
+            border-radius: 999px;
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: .4px;
+        }
+
+        .badge-approved {
+            background: #e8fbf2;
+            color: #07935e;
+        }
+
+        .badge-pending {
+            background: #fff5e9;
+            color: #c95810;
+        }
+
+        .badge-sent {
+            background: #edf4ff;
+            color: #2468df;
+        }
+
+        .badge-clicked {
+            background: #fff0e8;
+            color: #d44e0c;
+        }
+
+        .badge-unapproved {
+            background: #f1f3f6;
+            color: #6c7481;
+        }
+
+        .score-good {
+            color: #07935e;
+        }
+
+        .score-warning {
+            color: #d05b12;
+        }
+
+        .empty {
+            padding: 50px;
+            text-align: center;
+            color: #718099;
+        }
+
+        .footer {
+            text-align: center;
+            color: #91a0b8;
+            font-size: 12px;
+            padding-top: 28px;
+        }
+
+        @media (max-width: 900px) {
+            .metrics {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .campaign-meta {
+                grid-template-columns: 1fr;
+            }
+
+            .hero {
+                align-items: flex-start;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .hero {
+                flex-direction: column;
+            }
+
+            .metrics {
+                grid-template-columns: 1fr;
+            }
+
+            .campaign-id {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<header class="topbar">
+    <div class="brand">
+        <div class="brand-logo">PA</div>
+        <div>
+            <h1>Phishing Awareness Tracker</h1>
+            <p>Security Awareness & Phishing Analytics</p>
+        </div>
+    </div>
+
+    <div class="status-pill">
+        ● Campaign Results
+    </div>
+</header>
+
+<main class="container">
+
+    <a class="back-link"
+       href="{{ url_for('campaign_recipients', campaign_id=campaign.id) }}">
+        ← Back to Campaign
+    </a>
+
+    <section class="hero">
+        <div>
+            <span class="eyebrow">REAL-TIME CAMPAIGN ANALYTICS</span>
+
+            <h2>{{ campaign.campaign_name }}</h2>
+
+            <p>
+                Delivery, engagement and phishing-awareness results
+                for approved campaign recipients.
+            </p>
+        </div>
+
+        <div class="campaign-id">
+            <small>CAMPAIGN ID</small>
+            <strong>#{{ campaign.id }}</strong>
+        </div>
+    </section>
+
+    <section class="campaign-meta">
+        <div class="meta-card">
+            <span>Campaign Template</span>
+            <strong>{{ campaign.campaign_template }}</strong>
+        </div>
+
+        <div class="meta-card">
+            <span>Start Date</span>
+            <strong>{{ campaign.start_date }}</strong>
+        </div>
+
+        <div class="meta-card">
+            <span>Status</span>
+            <strong>{{ campaign.status | upper }}</strong>
+        </div>
+    </section>
+
+    <section class="metrics">
+
+        <div class="metric-card">
+            <div class="metric-label">Approved Recipients</div>
+            <div class="metric-value">{{ total_recipients }}</div>
+            <div class="metric-sub">Authorized participants</div>
+        </div>
+
+        <div class="metric-card">
+            <div class="metric-label">Emails Sent</div>
+            <div class="metric-value">{{ sent_count }}</div>
+            <div class="metric-sub">Successful deliveries initiated</div>
+        </div>
+
+        <div class="metric-card">
+            <div class="metric-label">Link Clicks</div>
+            <div class="metric-value">{{ clicked_count }}</div>
+            <div class="metric-sub">Unique recipients clicked</div>
+        </div>
+
+        <div class="metric-card">
+            <div class="metric-label">Click Rate</div>
+            <div class="metric-value">{{ click_rate }}%</div>
+            <div class="metric-sub">Clicked ÷ approved recipients</div>
+        </div>
+
+        <div class="metric-card">
+            <div class="metric-label">Awareness Score</div>
+
+            {% if awareness_score is not none %}
+                <div class="metric-value
+                    {% if awareness_score >= 70 %}
+                        score-good
+                    {% else %}
+                        score-warning
+                    {% endif %}
+                ">
+                    {{ awareness_score }}%
+                </div>
+            {% else %}
+                <div class="metric-value">—</div>
+            {% endif %}
+
+            <div class="metric-sub">
+                Higher score indicates fewer campaign-link clicks
+            </div>
+        </div>
+
+    </section>
+
+    <section class="panel">
+
+        <div class="panel-heading">
+            <div>
+                <h3>Recipient Results</h3>
+                <p>
+                    Individual delivery and engagement activity for this campaign.
+                </p>
+            </div>
+        </div>
+
+        {% if recipients %}
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Recipient</th>
+                    <th>Department</th>
+                    <th>Approval</th>
+                    <th>Delivery Status</th>
+                    <th>Sent At</th>
+                    <th>Clicked At</th>
+                </tr>
+            </thead>
+
+            <tbody>
+
+            {% for recipient in recipients %}
+                <tr>
+
+                    <td class="person">
+                        <strong>{{ recipient.full_name }}</strong>
+                        <span>{{ recipient.email }}</span>
+                    </td>
+
+                    <td>
+                        {{ recipient.department or "—" }}
+                    </td>
+
+                    <td>
+                        {% if recipient.approved %}
+                            <span class="badge badge-approved">
+                                ✓ Approved
+                            </span>
+                        {% else %}
+                            <span class="badge badge-unapproved">
+                                Not Approved
+                            </span>
+                        {% endif %}
+                    </td>
+
+                    <td>
+                        {% if recipient.status == "clicked" %}
+                            <span class="badge badge-clicked">Clicked</span>
+                        {% elif recipient.status == "sent" %}
+                            <span class="badge badge-sent">Sent</span>
+                        {% else %}
+                            <span class="badge badge-pending">
+                                {{ recipient.status }}
+                            </span>
+                        {% endif %}
+                    </td>
+
+                    <td>
+                        {{ recipient.sent_at or "—" }}
+                    </td>
+
+                    <td>
+                        {{ recipient.clicked_at or "—" }}
+                    </td>
+
+                </tr>
+            {% endfor %}
+
+            </tbody>
+        </table>
+
+        {% else %}
+
+        <div class="empty">
+            No recipients are available for this campaign.
+        </div>
+
+        {% endif %}
+
+    </section>
+
+    <div class="footer">
+        CyberAssess · Phishing Awareness Tracker · Authorized Internal Use
+    </div>
+
+</main>
+
+</body>
+</html>

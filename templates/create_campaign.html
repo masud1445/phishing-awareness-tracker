@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Create Campaign | Phishing Awareness Tracker</title>
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+
+<body>
+
+<header class="topbar">
+    <div class="brand">
+        <div class="logo">PA</div>
+
+        <div>
+            <h1>Phishing Awareness Tracker</h1>
+            <p>Security Awareness & Phishing Analytics</p>
+        </div>
+    </div>
+
+    <div class="status">
+        ● Authorized Training Environment
+    </div>
+</header>
+
+
+<main class="container">
+
+    <a class="back-link" href="{{ url_for('home') }}">
+        ← Back to Dashboard
+    </a>
+
+    <section class="form-card">
+
+        <div class="form-header">
+            <span class="hero-label">NEW CAMPAIGN</span>
+
+            <h2>Create Awareness Campaign</h2>
+
+            <p>
+                Configure an authorized phishing awareness campaign. No passwords, OTPs or sensitive credentials
+                will be collected.
+            </p>
+        </div>
+
+
+        <form method="POST" action="{{ url_for('create_campaign') }}">
+
+            <div class="form-grid">
+
+                <div class="form-group full-width">
+                    <label for="campaign_name">Campaign Name</label>
+
+                    <input
+                        type="text"
+                        id="campaign_name"
+                        required
+                        name="campaign_name"
+                        placeholder="Example: October Security Awareness Test">
+                </div>
+
+
+                <div class="form-group full-width">
+                    <label for="purpose">Purpose / Description</label>
+
+                    <textarea
+                        id="purpose"
+                        name="purpose"
+                        rows="4"
+                        placeholder="Describe the training objective of this campaign"></textarea>
+                </div>
+
+
+                <div class="form-group">
+                    <label for="template">Campaign Template</label>
+
+                    <select id="campaign_template" name="campaign_template" required>
+                        <option value="">Select a safe template</option>
+                        <option value="basic-link">
+                            Basic Link Awareness Test
+                        </option>
+                        <option value="document-share">
+                            Document Share Awareness
+                        </option>
+                        <option value="security-notice">
+                            Security Notice Awareness
+                        </option>
+                    </select>
+                </div>
+
+
+                <div class="form-group">
+                    <label for="start_date">Start Date</label>
+
+                    <input
+                        type="date"
+                        id="start_date"
+                        required
+                        name="start_date">
+                </div>
+
+
+                <div class="form-group full-width">
+
+                    <label class="authorization-box">
+
+                        <input type="checkbox" id="authorized" name="authorized" required>
+
+                        <span>
+                            I confirm that this campaign is for an
+                            authorized internal training environment
+                            and will only include approved test recipients.
+                        </span>
+
+                    </label>
+
+                </div>
+
+            </div>
+
+
+            <div class="form-actions">
+
+                <a class="btn-secondary"
+                   href="{{ url_for('home') }}">
+                    Cancel
+                </a>
+
+                <button class="btn" type="submit">
+                    Continue to Recipients →
+                </button>
+
+            </div>
+
+        </form>
+
+    </section>
+
+
+    <div class="footer">
+        CyberAssess · Phishing Awareness Tracker · Authorized Internal Use
+    </div>
+
+</main>
+
+</body>
+</html>

@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Campaign Recipients | Phishing Awareness Tracker</title>
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+
+<body>
+
+<header class="topbar">
+    <div class="brand">
+        <div class="logo">PA</div>
+
+        <div>
+            <h1>Phishing Awareness Tracker</h1>
+            <p>Security Awareness & Phishing Analytics</p>
+        </div>
+    </div>
+
+    <div class="status">
+        ● Authorized Training Environment
+    </div>
+</header>
+
+
+<main class="container">
+
+    <a class="back-link" href="{{ url_for('home') }}">
+        ← Back to Dashboard
+    </a>
+
+
+    <section class="recipient-hero">
+
+        <div>
+            <span class="hero-label">CAMPAIGN CREATED</span>
+
+            <h2>Add Campaign Recipients</h2>
+
+            <p>
+                Configure the approved recipients who will participate
+                in this phishing awareness campaign.
+            </p>
+        </div>
+
+        <div class="campaign-id-badge">
+            <span>Campaign ID</span>
+            <strong>#{{ campaign.id }}</strong>
+        </div>
+
+    </section>
+
+
+    <section class="campaign-summary-grid">
+
+        <div class="summary-card blue-summary">
+            <span>Campaign</span>
+            <strong>{{ campaign.campaign_name }}</strong>
+        </div>
+
+        <div class="summary-card purple-summary">
+            <span>Campaign Template</span>
+            <strong>
+                {% if campaign.campaign_template == 'basic-link' %}
+                    Basic Link Awareness
+                {% elif campaign.campaign_template == 'document-share' %}
+                    Document Share Awareness
+                {% elif campaign.campaign_template == 'security-notice' %}
+                    Security Notice Awareness
+                {% else %}
+                    {{ campaign.campaign_template }}
+                {% endif %}
+            </strong>
+        </div>
+
+        <div class="summary-card orange-summary">
+            <span>Start Date</span>
+            <strong>{{ campaign.start_date }}</strong>
+        </div>
+
+        <div class="summary-card green-summary">
+            <span>Status</span>
+            <strong class="status-pill">
+                {{ campaign.status | upper }}
+            </strong>
+        </div>
+
+    </section>
+
+
+    <div class="campaign-action-bar">
+
+        <div>
+            <strong>Campaign Control</strong>
+            <span>
+                {% if campaign.status == 'draft' %}
+                    Review recipients and launch when ready.
+                {% elif campaign.status == 'active' %}
+                    Campaign is currently active.
+                {% else %}
+                    Current status: {{ campaign.status }}
+                {% endif %}
+            </span>
+        </div>
+
+        {% if campaign.status == 'draft' %}
+        <form method="POST"
+              action="{{ url_for('launch_campaign', campaign_id=campaign.id) }}">
+            <button class="btn" type="submit">
+                Launch Campaign →
+            </button>
+        </form>
+        {% else %}
+        <span class="active-campaign-badge">
+            ● ACTIVE
+        </span>
+        {% endif %}
+
+    </div>
+
+
+    <div class="email-preview-action">
+        <div>
+            <strong>Campaign Email</strong>
+            <span>Review the recipient message before delivery.</span>
+        </div>
+
+        <a class="btn"
+           href="{{ url_for('campaign_email_preview', campaign_id=campaign.id) }}"
+           style="text-decoration:none;">
+            Preview Campaign Email →
+        </a>
+    </div>
+
+    <section class="recipient-layout">
+
+        <div class="panel recipient-panel">
+
+            <div class="panel-heading-row">
+                <div>
+                    <h3>Campaign Recipients</h3>
+                    <p>
+                        Add approved employees or test users to this campaign.
+                    </p>
+                </div>
+
+                <div class="recipient-count">
+                    <span>Recipients</span>
+                    <strong>{{ recipients | length }}</strong>
+                </div>
+            </div>
+
+
+            {% if recipients %}
+
+            <div class="recipient-list">
+
+                {% for recipient in recipients %}
+                <div class="recipient-row">
+
+                    <div class="recipient-avatar">
+                        {{ recipient.full_name[0] | upper }}
+                    </div>
+
+                    <div class="recipient-details">
+                        <strong>{{ recipient.full_name }}</strong>
+                        <span>{{ recipient.email }}</span>
+                    </div>
+
+                    <div class="recipient-department">
+                        {{ recipient.department or "Not Assigned" }}
+                    </div>
+
+                    <div>
+                        <span class="recipient-status">
+                            {{ recipient.status | upper }}
+                        </span>
+                    </div>
+
+                    <div class="recipient-approval">
+                        {% if recipient.approved %}
+                            <span class="approved-badge">
+                                ✓ APPROVED
+                            </span>
+                        {% else %}
+                            <form method="POST"
+                                  action="{{ url_for(
+                                      'approve_recipient',
+                                      campaign_id=campaign.id,
+                                      recipient_id=recipient.id
+                                  ) }}">
+                                <button class="approve-btn" type="submit">
+                                    Approve
+                                </button>
+                            </form>
+                        {% endif %}
+                    </div>
+
+                </div>
+                {% endfor %}
+
+            </div>
+
+            <div class="recipient-actions">
+                <a class="btn"
+                   href="{{ url_for('add_recipient', campaign_id=campaign.id) }}"
+                   style="text-decoration: none;">
+                    + Add Another Recipient
+                </a>
+            </div>
+
+            {% else %}
+
+            <div class="recipient-empty">
+
+                <div class="recipient-icon">
+                    👥
+                </div>
+
+                <h3>No recipients added yet</h3>
+
+                <p>
+                    Add authorized campaign recipients to begin tracking
+                    awareness activity and engagement results.
+                </p>
+
+                <a class="btn"
+                   href="{{ url_for('add_recipient', campaign_id=campaign.id) }}"
+                   style="text-decoration: none;">
+                    + Add Recipient
+                </a>
+
+            </div>
+
+            {% endif %}
+
+        </div>
+
+
+        <div class="panel campaign-info-panel">
+
+            <div class="info-icon">🛡️</div>
+
+            <h3>Campaign Protection</h3>
+
+            <div class="protection-row">
+                <div class="protection-check">✓</div>
+                <div>
+                    <strong>Approved Recipients</strong>
+                    <p>Only authorized internal users should be added.</p>
+                </div>
+            </div>
+
+            <div class="protection-row">
+                <div class="protection-check">✓</div>
+                <div>
+                    <strong>Privacy Protected</strong>
+                    <p>Sensitive credentials are not collected.</p>
+                </div>
+            </div>
+
+            <div class="protection-row">
+                <div class="protection-check">✓</div>
+                <div>
+                    <strong>Real-Time Tracking</strong>
+                    <p>Campaign engagement will be reflected in awareness metrics.</p>
+                </div>
+            </div>
+
+        </div>
+
+    </section>
+
+
+    <div class="footer">
+        CyberAssess · Phishing Awareness Tracker · Authorized Internal Use
+    </div>
+
+</main>
+
+</body>
+</html>

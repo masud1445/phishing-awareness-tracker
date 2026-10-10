@@ -1,0 +1,27 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.env
+.DS_Store
+.vscode/
+
+# Local secrets and environment files
+.env
+.env.save
+nano.env
+
+# Virtual environment
+.venv/
+
+# Python cache / test cache
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Local backup files
+app.py.before_*
+*.before_*
+
+# macOS
+.DS_Store

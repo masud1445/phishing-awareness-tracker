@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phishing Awareness Tracker</title>
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+
+<body>
+
+<header class="topbar">
+    <div class="brand">
+        <div class="logo">PA</div>
+
+        <div>
+            <h1>Phishing Awareness Tracker</h1>
+            <p>Security Awareness & Phishing Analytics</p>
+        </div>
+    </div>
+
+    <div class="status">
+        ● System Operational
+    </div>
+</header>
+
+
+<main class="container">
+
+    <section class="hero">
+
+        <span class="hero-label">
+            REAL-TIME SECURITY AWARENESS PLATFORM
+        </span>
+
+        <h2>
+            Measure phishing awareness.<br>
+            Improve human security.
+        </h2>
+
+        <p>
+            An internal phishing awareness and engagement tracking platform
+            designed to measure user interaction, identify awareness gaps
+            and support cybersecurity training.
+        </p>
+
+    </section>
+
+
+    <h3 class="section-title">Dashboard Overview</h3>
+
+
+    <section class="stats">
+
+        <div class="card blue">
+            <div class="card-label">Campaigns</div>
+            <div class="card-value">{{ total_campaigns }}</div>
+            <p>Total campaigns created</p>
+        </div>
+
+        <div class="card purple">
+            <div class="card-label">Campaign Recipients</div>
+            <div class="card-value">{{ total_recipients }}</div>
+            <p>Approved recipients</p>
+        </div>
+
+        <div class="card orange">
+            <div class="card-label">Link Clicks</div>
+            <div class="card-value">{{ link_clicks }}</div>
+            <p>Unique recipients who followed a campaign link</p>
+        </div>
+
+        <div class="card green">
+            <div class="card-label">Awareness Score</div>
+
+            <div class="card-value">
+                {% if awareness_score is not none %}
+                    {{ awareness_score }}%
+                {% else %}
+                    —
+                {% endif %}
+            </div>
+
+            <p>
+                {% if awareness_score is not none %}
+                    Based on recipient link-click behavior
+                {% else %}
+                    Available after campaign activity
+                {% endif %}
+            </p>
+        </div>
+
+    </section>
+
+
+    <section class="dashboard-grid">
+
+        <div class="panel">
+
+            <div class="panel-heading-row">
+                <div>
+                    <h3>Campaign Activity</h3>
+                    <p>Recent awareness campaigns and engagement results.</p>
+                </div>
+
+                <a class="btn"
+                   href="{{ url_for('create_campaign') }}"
+                   style="text-decoration:none;">
+                    + Create Campaign
+                </a>
+            </div>
+
+
+            {% if campaigns %}
+
+            <div class="recipient-list">
+
+                {% for campaign in campaigns %}
+
+                <a href="{{ url_for('campaign_recipients', campaign_id=campaign.id) }}"
+                   style="text-decoration:none; color:inherit;">
+
+                    <div class="recipient-row">
+
+                        <div class="recipient-avatar">
+                            {{ campaign.id }}
+                        </div>
+
+                        <div class="recipient-details">
+                            <strong>{{ campaign.campaign_name }}</strong>
+                            <span>
+                                {{ campaign.start_date }}
+                                · {{ campaign.campaign_template }}
+                            </span>
+                        </div>
+
+                        <div class="recipient-department">
+                            {{ campaign.recipient_count }} recipients
+                        </div>
+
+                        <div class="campaign-row-actions">
+    <span class="recipient-status">
+        {{ campaign.click_count }} clicks
+    </span>
+
+    <span
+        class="campaign-results-link"
+        role="button"
+        data-href="{{ url_for('campaign_results', campaign_id=campaign.id) }}"
+        onclick="event.preventDefault(); event.stopPropagation(); window.location.href=this.dataset.href;"
+    >
+        View Results →
+    </span>
+</div>
+
+                    </div>
+
+                </a>
+
+                {% endfor %}
+
+            </div>
+
+            {% else %}
+
+            <div class="empty">
+
+                <div class="empty-icon">📨</div>
+
+                <h3>No campaigns yet</h3>
+
+                <p>
+                    Create your first authorized phishing awareness campaign.
+                </p>
+
+            </div>
+
+            {% endif %}
+
+        </div>
+
+
+        <div class="panel">
+
+            <h3>Platform Controls</h3>
+
+
+            <div class="safety">
+
+                <div class="check">✓</div>
+
+                <div>
+                    <strong>Authorized Internal Use</strong>
+
+                    <p>
+                        Campaigns are intended for approved training environments.
+                    </p>
+                </div>
+
+            </div>
+
+
+            <div class="safety">
+
+                <div class="check">✓</div>
+
+                <div>
+                    <strong>No Credential Collection</strong>
+
+                    <p>
+                        Passwords, OTPs and authentication credentials
+                        are not collected.
+                    </p>
+                </div>
+
+            </div>
+
+
+            <div class="safety">
+
+                <div class="check">✓</div>
+
+                <div>
+                    <strong>Real-Time Event Tracking</strong>
+
+                    <p>
+                        Campaign clicks are recorded and reflected
+                        in awareness metrics.
+                    </p>
+                </div>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+    <div class="footer">
+        CyberAssess · Phishing Awareness Tracker · Authorized Internal Use
+    </div>
+
+</main>
+
+</body>
+</html>
