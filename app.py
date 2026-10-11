@@ -1,14 +1,19 @@
 import os
 import secrets
+import json
+
 
 from dotenv import load_dotenv
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, session
 from database import get_db_connection
-from email_service import EmailDeliveryError, send_campaign_email
+from email_service import EmailDeliveryError, send_campaign_email, build_tracking_url, effective_template
+from template_content import TemplateValidationError, render_email, preview_digest
+from studio import configure_studio, require_csrf
 
 load_dotenv()
 
 app = Flask(__name__)
+configure_studio(app)
 
 
 @app.route("/")
@@ -351,7 +356,9 @@ def send_recipient_email(campaign_id, recipient_id):
                 SELECT
                     id,
                     campaign_name,
-                    status
+                    status,
+                    authorized,
+                    (SELECT snapshot FROM campaign_email_settings WHERE campaign_id = campaigns.id) AS email_snapshot
                 FROM campaigns
                 WHERE id = %s
                 """,
@@ -385,6 +392,29 @@ def send_recipient_email(campaign_id, recipient_id):
             if recipient is None:
                 return "Recipient is not approved for email delivery.", 403
 
+            if campaign.get("email_snapshot"):
+                # Serialize Studio delivery with template replacement. Re-read under
+                # the same campaign lock used by apply_template before validation.
+                connection.begin()
+                cursor.execute(
+                    "SELECT id, campaign_name, status, authorized, "
+                    "(SELECT snapshot FROM campaign_email_settings WHERE campaign_id=campaigns.id) AS email_snapshot "
+                    "FROM campaigns WHERE id=%s FOR UPDATE", (campaign_id,))
+                campaign = cursor.fetchone()
+                campaign["email_template"] = json.loads(campaign["email_snapshot"])
+                require_csrf()
+                if request.form.get("authorized") != "on":
+                    return "Authorization confirmation is required.", 400
+                try:
+                    digest = preview_digest(campaign["email_template"], campaign, recipient,
+                                            build_tracking_url(recipient["tracking_token"]))
+                except (TemplateValidationError, EmailDeliveryError) as exc:
+                    return str(exc), 400
+                if session.get("reviewed_email") != [campaign_id, recipient_id, digest]:
+                    return "Preview the current recipient email before sending.", 400
+            if campaign.get("authorized") == 0:
+                return "Campaign authorization confirmation is required.", 400
+
             try:
                 send_campaign_email(campaign, recipient)
 
@@ -407,6 +437,8 @@ def send_recipient_email(campaign_id, recipient_id):
                 """,
                 (recipient_id,),
             )
+            if campaign.get("email_template"):
+                connection.commit()
 
     finally:
         connection.close()
@@ -434,7 +466,9 @@ def campaign_email_preview(campaign_id):
                     purpose,
                     campaign_template,
                     start_date,
-                    status
+                    status,
+                    authorized,
+                    (SELECT snapshot FROM campaign_email_settings WHERE campaign_id = campaigns.id) AS email_snapshot
                 FROM campaigns
                 WHERE id = %s
                 """,
@@ -468,8 +502,28 @@ def campaign_email_preview(campaign_id):
     finally:
         connection.close()
 
+    if campaign.get("email_snapshot"):
+        campaign["email_template"] = json.loads(campaign["email_snapshot"])
+    recipient_id = request.args.get("recipient_id", type=int)
+    selected = next((r for r in recipients if r["id"] == recipient_id), None) if recipient_id else (recipients[0] if recipients else None)
+    if recipient_id and selected is None:
+        return "Approved recipient not found.", 404
+    template = effective_template(campaign)
+    rendered = None
+    if selected:
+        try:
+            illustration = next((a for a in template.get("assets", []) if a["kind"] == "image"), None)
+            tracking_url = build_tracking_url(selected["tracking_token"])
+            rendered = render_email(template, campaign, selected, tracking_url,
+                                    url_for("studio.asset_download", asset_id=illustration["id"]) if illustration else None)
+            if campaign.get("email_template"):
+                session["reviewed_email"] = [campaign_id, selected["id"], preview_digest(template, campaign, selected, tracking_url)]
+        except (TemplateValidationError, EmailDeliveryError) as exc:
+            return str(exc), 400
+
     return render_template(
         "email_preview.html",
+        selected=selected, rendered=rendered, template=template,
         campaign=campaign,
         recipients=recipients,
         base_url=os.getenv(

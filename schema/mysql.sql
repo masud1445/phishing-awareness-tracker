@@ -1,0 +1,35 @@
+CREATE TABLE IF NOT EXISTS campaigns (
+ id INTEGER PRIMARY KEY AUTO_INCREMENT, campaign_name TEXT NOT NULL, purpose TEXT,
+ campaign_template TEXT NOT NULL, start_date DATE NOT NULL, authorized INTEGER NOT NULL DEFAULT 0,
+ status VARCHAR(32) NOT NULL DEFAULT 'draft', created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS recipients (
+ id INTEGER PRIMARY KEY AUTO_INCREMENT, campaign_id INTEGER NOT NULL ,
+ full_name TEXT NOT NULL, email TEXT NOT NULL, department TEXT, approved INTEGER NOT NULL DEFAULT 0,
+ approved_at DATETIME, tracking_token VARCHAR(128) NOT NULL UNIQUE, status VARCHAR(32) NOT NULL DEFAULT 'pending',
+ sent_at DATETIME, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ FOREIGN KEY (campaign_id) REFERENCES campaigns(id)
+);
+CREATE TABLE IF NOT EXISTS tracking_events (
+ id INTEGER PRIMARY KEY AUTO_INCREMENT, campaign_id INTEGER NOT NULL ,
+ recipient_id INTEGER NOT NULL , event_type TEXT NOT NULL,
+ event_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ FOREIGN KEY (campaign_id) REFERENCES campaigns(id),
+ FOREIGN KEY (recipient_id) REFERENCES recipients(id)
+);
+CREATE TABLE IF NOT EXISTS email_templates (
+ id INTEGER PRIMARY KEY AUTO_INCREMENT, name TEXT NOT NULL, subject TEXT NOT NULL, body MEDIUMTEXT NOT NULL,
+ sender_name TEXT NOT NULL, sender_email TEXT NOT NULL, reference_link VARCHAR(2048) NOT NULL DEFAULT '',
+ created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS template_assets (
+ id INTEGER PRIMARY KEY AUTO_INCREMENT, template_id INTEGER NOT NULL ,
+ filename TEXT NOT NULL, mime_type TEXT NOT NULL, kind TEXT NOT NULL, archived INTEGER NOT NULL DEFAULT 0, data LONGBLOB NOT NULL,
+ FOREIGN KEY (template_id) REFERENCES email_templates(id)
+);
+CREATE TABLE IF NOT EXISTS campaign_email_settings (
+ campaign_id INTEGER PRIMARY KEY , template_id INTEGER NOT NULL ,
+ snapshot LONGTEXT NOT NULL,
+ FOREIGN KEY (campaign_id) REFERENCES campaigns(id),
+ FOREIGN KEY (template_id) REFERENCES email_templates(id)
+);

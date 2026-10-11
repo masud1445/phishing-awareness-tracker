@@ -1,0 +1,11 @@
+{% extends 'studio_base.html' %}
+{% block content %}
+<section class="studio-heading"><div><span class="eyebrow">CONTENT WORKSPACE</span><h2>Email Template Studio</h2><p>Build reusable awareness messages. Personalize them for each approved participant.</p></div><a class="btn" href="{{ url_for('studio.editor') }}">+ New template</a></section>
+{% if not senders %}<div class="studio-notice">Sender setup needed: configure an authenticated SMTP identity on the server before saving templates. Credentials are never entered here.</div>{% endif %}
+<section class="studio-metrics"><div><strong>{{ templates|length }}</strong><span>Reusable templates</span></div><div><strong>3</strong><span>Personalization placeholders</span></div><div><strong>5 MB</strong><span>Maximum per upload</span></div></section>
+<div class="library-grid">
+{% for template in templates %}
+<article class="template-card"><span class="template-icon" aria-hidden="true">✉</span><span class="studio-tag">AWARENESS EMAIL</span><h3>{{ template.name }}</h3><p>{{ template.subject }}</p><dl><dt>Display name</dt><dd>{{ template.sender_name }}</dd><dt>Updated</dt><dd>{{ template.updated_at }}</dd></dl><a class="btn-secondary" href="{{ url_for('studio.editor', template_id=template.id) }}">Open template →</a></article>
+{% else %}<div class="studio-empty"><h3>Your library starts here</h3><p>Create a message once, then reuse it across authorized campaigns.</p><a class="btn" href="{{ url_for('studio.editor') }}">Create your first template</a></div>{% endfor %}
+</div>
+{% endblock %}

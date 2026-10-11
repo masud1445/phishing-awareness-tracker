@@ -1,4 +1,7 @@
 Flask
-PyMySQL
+PyMySQL[rsa]
 python-dotenv
 pytest
+Pillow>=11.0
+pypdf>=6.0
+defusedxml>=0.7.1

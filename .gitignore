@@ -25,3 +25,6 @@ app.py.before_*
 
 # macOS
 .DS_Store
+
+# Local database and session signing key
+instance/
