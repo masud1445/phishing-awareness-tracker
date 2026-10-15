@@ -1,249 +1,80 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Phishing Awareness Tracker</title>
-
-    <link rel="stylesheet"
-          href="{{ url_for('static', filename='css/style.css') }}">
-</head>
-
-<body>
-
-<header class="topbar">
-    <div class="brand">
-        <div class="logo">PA</div>
-
-        <div>
-            <h1>Phishing Awareness Tracker</h1>
-            <p>Security Awareness & Phishing Analytics</p>
-        </div>
-    </div>
-
-    <div class="status">
-        ● System Operational
-    </div>
-</header>
-
-
-<main class="container">
-
-    <section class="hero">
-
-        <span class="hero-label">
-            REAL-TIME SECURITY AWARENESS PLATFORM
-        </span>
-
-        <h2>
-            Measure phishing awareness.<br>
-            Improve human security.
-        </h2>
-
-        <p>
-            An internal phishing awareness and engagement tracking platform
-            designed to measure user interaction, identify awareness gaps
-            and support cybersecurity training.
-        </p>
-
-    </section>
-
-
-    <a class="btn-secondary" href="{{ url_for('studio.library') }}">Email Template Studio →</a>
-    <h3 class="section-title">Dashboard Overview</h3>
-
-
-    <section class="stats">
-
-        <div class="card blue">
-            <div class="card-label">Campaigns</div>
-            <div class="card-value">{{ total_campaigns }}</div>
-            <p>Total campaigns created</p>
-        </div>
-
-        <div class="card purple">
-            <div class="card-label">Campaign Recipients</div>
-            <div class="card-value">{{ total_recipients }}</div>
-            <p>Approved recipients</p>
-        </div>
-
-        <div class="card orange">
-            <div class="card-label">Link Clicks</div>
-            <div class="card-value">{{ link_clicks }}</div>
-            <p>Unique recipients who followed a campaign link</p>
-        </div>
-
-        <div class="card green">
-            <div class="card-label">Awareness Score</div>
-
-            <div class="card-value">
-                {% if awareness_score is not none %}
-                    {{ awareness_score }}%
-                {% else %}
-                    —
-                {% endif %}
-            </div>
-
-            <p>
-                {% if awareness_score is not none %}
-                    Based on recipient link-click behavior
-                {% else %}
-                    Available after campaign activity
-                {% endif %}
-            </p>
-        </div>
-
-    </section>
-
-
-    <section class="dashboard-grid">
-
-        <div class="panel">
-
-            <div class="panel-heading-row">
-                <div>
-                    <h3>Campaign Activity</h3>
-                    <p>Recent awareness campaigns and engagement results.</p>
-                </div>
-
-                <a class="btn"
-                   href="{{ url_for('create_campaign') }}"
-                   style="text-decoration:none;">
-                    + Create Campaign
-                </a>
-            </div>
-
-
-            {% if campaigns %}
-
-            <div class="recipient-list">
-
-                {% for campaign in campaigns %}
-
-                <a href="{{ url_for('campaign_recipients', campaign_id=campaign.id) }}"
-                   style="text-decoration:none; color:inherit;">
-
-                    <div class="recipient-row">
-
-                        <div class="recipient-avatar">
-                            {{ campaign.id }}
-                        </div>
-
-                        <div class="recipient-details">
-                            <strong>{{ campaign.campaign_name }}</strong>
-                            <span>
-                                {{ campaign.start_date }}
-                                · {{ campaign.campaign_template }}
-                            </span>
-                        </div>
-
-                        <div class="recipient-department">
-                            {{ campaign.recipient_count }} recipients
-                        </div>
-
-                        <div class="campaign-row-actions">
-    <span class="recipient-status">
-        {{ campaign.click_count }} clicks
-    </span>
-
-    <span
-        class="campaign-results-link"
-        role="button"
-        data-href="{{ url_for('campaign_results', campaign_id=campaign.id) }}"
-        onclick="event.preventDefault(); event.stopPropagation(); window.location.href=this.dataset.href;"
-    >
-        View Results →
-    </span>
+{% extends 'base.html' %}
+{% from 'components/ui.html' import icon, metric, empty, campaign_table, comparison %}
+{% block title %}Dashboard · Phishing Awareness Tracker{% endblock %}
+{% block content %}
+<div class="page-heading">
+<div>
+<span class="eyebrow">SECURITY AWARENESS OVERVIEW</span>
+<h2>Your awareness workspace</h2>
+<p>A clear view of your campaigns, your audience, and the moments that matter.</p>
 </div>
-
-                    </div>
-
-                </a>
-
-                {% endfor %}
-
-            </div>
-
-            {% else %}
-
-            <div class="empty">
-
-                <div class="empty-icon">📨</div>
-
-                <h3>No campaigns yet</h3>
-
-                <p>
-                    Create your first authorized phishing awareness campaign.
-                </p>
-
-            </div>
-
-            {% endif %}
-
-        </div>
-
-
-        <div class="panel">
-
-            <h3>Platform Controls</h3>
-
-
-            <div class="safety">
-
-                <div class="check">✓</div>
-
-                <div>
-                    <strong>Authorized Internal Use</strong>
-
-                    <p>
-                        Campaigns are intended for approved training environments.
-                    </p>
-                </div>
-
-            </div>
-
-
-            <div class="safety">
-
-                <div class="check">✓</div>
-
-                <div>
-                    <strong>No Credential Collection</strong>
-
-                    <p>
-                        Passwords, OTPs and authentication credentials
-                        are not collected.
-                    </p>
-                </div>
-
-            </div>
-
-
-            <div class="safety">
-
-                <div class="check">✓</div>
-
-                <div>
-                    <strong>Real-Time Event Tracking</strong>
-
-                    <p>
-                        Campaign clicks are recorded and reflected
-                        in awareness metrics.
-                    </p>
-                </div>
-
-            </div>
-
-        </div>
-
-    </section>
-
-
-    <div class="footer">
-        CyberAssess · Phishing Awareness Tracker · Authorized Internal Use
-    </div>
-
-</main>
-
-</body>
-</html>
+<span class="badge neutral">{{ icon('shield',16) }} Engagement-only tracking</span>
+</div>
+<section class="hero">
+<div>
+<span class="eyebrow">BUILD A MORE AWARE ORGANIZATION</span>
+<h1>Turn everyday decisions<br>into stronger security.</h1>
+<p>Run authorized campaigns, understand engagement, and help your team recognize suspicious messages with confidence.</p>
+<div class="heading-actions">
+<a class="btn btn-white" href="{{ url_for('create_campaign') }}">{{ icon('plus',18) }} Create campaign</a>
+<a class="btn btn-outline-light" href="{{ url_for('studio.library') }}">{{ icon('mail',18) }} Template Studio</a>
+</div>
+</div>
+<div class="hero-visual" aria-hidden="true">
+<div class="orbit">
+</div>
+<span class="visual-node">{{ icon('check',16) }} Approved audiences</span>
+<div class="shield-emblem">{{ icon('shield',48) }}</div>
+<div class="visual-note">
+<strong>Privacy by design</strong>No credential collection</div>
+</div>
+</section>
+<section class="stats" aria-label="Workspace metrics">{{ metric('Campaigns',total_campaigns,active_count|string+' active · '+draft_count|string+' in draft','folder') }}{{ metric('Campaign Recipients',total_recipients,'Approved participants across campaigns','users','cyan') }}{{ metric('Link Clicks',link_clicks,'Unique participant clicks, deduplicated','click','orange') }}{{ metric('Awareness Score',awareness_score|string+'%' if awareness_score is not none else '—','Fewer link clicks means a higher score','shield','green') }}</section>
+<div class="dashboard-grid">
+<section class="panel overview-chart">{{ comparison(campaigns) }}{% if total_recipients %}
+<div class="insight-footer">
+<div class="insight-mini">
+<div>
+<span>{{ icon('mail',17) }} Recorded deliveries</span>
+<strong>{{ sent_count }}</strong>
+</div>
+<div>
+<span>{{ icon('shield',17) }} No recorded click</span>
+<strong>{{ total_recipients-link_clicks }}</strong>
+</div>
+</div>
+<p>Compare campaigns with their audience size in mind. A click is an opportunity to reinforce safer habits.</p>
+</div>
+{% endif %}
+</section>
+<section class="panel controls-panel">
+<div class="panel-heading">
+<div>
+<h3>Built-in platform controls</h3>
+<p>Safety is part of every campaign.</p>
+</div>{{ icon('shield',22) }}</div>
+<div class="control-list">
+{% for glyph,title,text in [('users','Approved audiences','Delivery checks recipient approval and campaign membership.'),('lock','Credential protection','Participant pages never request passwords or OTPs.'),('click','Deduplicated tracking','Repeated clicks count once per participant.'),('mail','Authenticated senders','Saved identities require TLS and connection verification.'),('file','Validated attachments','Passive files only, with a 5 MB limit per upload.')] %}
+<div class="control-item">
+<span class="control-icon">{{ icon(glyph,18) }}</span>
+<div>
+<strong>{{ title }}</strong>
+<p>{{ text }}</p>
+</div>
+</div>
+{% endfor %}
+</div>
+<a class="btn-quiet" style="margin-top:22px" href="{{ url_for('platform_settings') }}">Review configuration {{ icon('arrow',16) }}</a>
+</section>
+</div>
+<section class="panel">
+<div class="panel-heading">
+<div>
+<h3>Campaign activity</h3>
+<p>Your latest campaigns and their audience engagement.</p>
+</div>
+<a class="btn-quiet" href="{{ url_for('campaign_directory') }}">All campaigns {{ icon('arrow',16) }}</a>
+</div>
+{% if campaigns %}{{ campaign_table(campaigns[:5]) }}{% else %}{{ empty('Your first campaign starts here','Create an authorized awareness campaign, choose your approved audience, and review the message before delivery.',url_for('create_campaign'),'Create campaign') }}{% endif %}
+</section>
+{% endblock %}

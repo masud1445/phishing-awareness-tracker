@@ -1,65 +1,24 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <title>Add Recipient | Phishing Awareness Tracker</title>
-
-    <link rel="stylesheet"
-          href="{{ url_for('static', filename='css/style.css') }}">
-</head>
-
-<body>
-
-<header class="topbar">
-    <div class="brand">
-        <div class="logo">PA</div>
-
-        <div>
-            <h1>Phishing Awareness Tracker</h1>
-            <p>Security Awareness & Phishing Analytics</p>
-        </div>
-    </div>
-
-    <div class="status">
-        ● Authorized Training Environment
-    </div>
-</header>
-
-
-<main class="container">
-
-    <a class="back-link"
-       href="{{ url_for('campaign_recipients', campaign_id=campaign.id) }}">
-        ← Back to Campaign
-    </a>
-
-
-    <section class="recipient-hero">
-
-        <div>
-            <span class="hero-label">NEW RECIPIENT</span>
-
-            <h2>Add Campaign Recipient</h2>
-
-            <p>
-                Add an approved internal recipient to
-                <strong>{{ campaign.campaign_name }}</strong>.
-            </p>
-        </div>
-
-        <div class="campaign-id-badge">
-            <span>Campaign ID</span>
-            <strong>#{{ campaign.id }}</strong>
-        </div>
-
-    </section>
-
-
-    <section class="form-card" style="margin-top: 20px;">
-
-        <form method="POST">
+{% extends 'base.html' %}
+{% from 'components/ui.html' import icon,steps %}
+{% block title %}Add campaign recipient · Phishing Awareness Tracker{% endblock %}
+{% block content %}
+<div class='page-heading'>
+<div>
+<span class='eyebrow'>APPROVED AUDIENCE</span>
+<h2>Add campaign recipient</h2>
+<p>Add a participant to {{ campaign.campaign_name }}. Approval is a separate step before delivery.</p>
+</div>
+<a class='btn-secondary' href="{{ url_for('campaign_directory') }}">{{ icon('folder',18) }} Campaigns</a>
+</div>{{ steps(2) }}<div class='two-column'>
+<section class='form-card'>
+<div class='step-heading'>
+<span>02</span>
+<div>
+<h3>Participant details</h3>
+<p>Use an organizational email address for an authorized participant.</p>
+</div>
+</div>
+<form method="POST">
 
             <div class="form-grid">
 
@@ -126,15 +85,37 @@
             </div>
 
         </form>
-
-    </section>
-
-
-    <div class="footer">
-        CyberAssess · Phishing Awareness Tracker · Authorized Internal Use
-    </div>
-
-</main>
-
-</body>
-</html>
+</section>
+<aside>
+<section class='callout'>
+<div class='guidance-icon'>{{ icon('shield',25) }}</div>
+<h3>Designed for responsible training</h3>
+<p>A safe campaign starts with a clear purpose and an approved audience.</p>
+<ol class='guide-list'>
+<li>
+<span>1</span>
+<div>
+<strong>Prepare the campaign</strong>
+<p>Create a draft and confirm your authorization.</p>
+</div>
+</li>
+<li>
+<span>2</span>
+<div>
+<strong>Approve your audience</strong>
+<p>Each recipient must be approved within this campaign.</p>
+</div>
+</li>
+<li>
+<span>3</span>
+<div>
+<strong>Review before delivery</strong>
+<p>Choose a verified sender and preview the personalized email.</p>
+</div>
+</li>
+</ol>
+<span class='badge verified'>{{ icon('lock',14) }} No credential collection</span>
+</section>
+</aside>
+</div>
+{% endblock %}

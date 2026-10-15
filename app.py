@@ -5,6 +5,7 @@ import json
 
 from dotenv import load_dotenv
 from flask import Flask, render_template, request, redirect, url_for, session
+from werkzeug.exceptions import HTTPException
 from database import get_db_connection
 from email_service import EmailDeliveryError, send_campaign_email, build_tracking_url, effective_template
 from template_content import TemplateValidationError, render_email, preview_digest
@@ -16,79 +17,99 @@ app = Flask(__name__)
 configure_studio(app)
 
 
-@app.route("/")
-def home():
-    connection = get_db_connection()
+@app.errorhandler(HTTPException)
+def product_http_error(error):
+    response = error.get_response()
+    response.set_data(render_template('error.html',code=error.code,message=error.description,public=request.path.startswith('/t/')))
+    response.content_type = 'text/html; charset=utf-8'
+    return response
 
+
+@app.after_request
+def product_validation_response(response):
+    # Existing endpoint validations keep their status and message in a useful page.
+    if response.status_code >= 400 and response.mimetype == 'text/html':
+        text = response.get_data(as_text=True)
+        if '<' not in text:
+            response.set_data(render_template('error.html',code=response.status_code,message=text,public=request.path.startswith('/t/')))
+    return response
+
+
+def campaign_overview():
+    """One aggregate row per campaign; click metrics use approved audiences only."""
+    connection = get_db_connection()
     try:
         with connection.cursor() as cursor:
-            cursor.execute("SELECT COUNT(*) AS total FROM campaigns")
-            total_campaigns = cursor.fetchone()["total"]
-
-            cursor.execute("SELECT COUNT(*) AS total FROM recipients WHERE approved = 1")
-            total_recipients = cursor.fetchone()["total"]
-
-            cursor.execute(
-                """
-                SELECT COUNT(DISTINCT recipient_id) AS total
-                FROM tracking_events
-                WHERE event_type = 'link_clicked'
-                """
-            )
-            link_clicks = cursor.fetchone()["total"]
-
-            if total_recipients > 0:
-                awareness_score = round(
-                    ((total_recipients - link_clicks) / total_recipients) * 100,
-                    1,
-                )
-            else:
-                awareness_score = None
-
-            cursor.execute(
-                """
-                SELECT
-                    c.id,
-                    c.campaign_name,
-                    c.campaign_template,
-                    c.start_date,
-                    c.status,
-                    COUNT(DISTINCT r.id) AS recipient_count,
-                    COUNT(
-                        DISTINCT CASE
-                            WHEN te.event_type = 'link_clicked'
-                            THEN te.recipient_id
-                        END
-                    ) AS click_count
-                FROM campaigns c
-                LEFT JOIN recipients r
-                    ON r.campaign_id = c.id
-                LEFT JOIN tracking_events te
-                    ON te.campaign_id = c.id
-                GROUP BY
-                    c.id,
-                    c.campaign_name,
-                    c.campaign_template,
-                    c.start_date,
-                    c.status
-                ORDER BY c.created_at DESC
-                LIMIT 5
-                """
-            )
-
-            campaigns = cursor.fetchall()
-
+            cursor.execute("""SELECT c.id,c.campaign_name,c.campaign_template,c.start_date,c.status,
+                COUNT(DISTINCT r.id) AS recipient_count,
+                COUNT(DISTINCT CASE WHEN r.approved=1 THEN r.id END) AS approved_count,
+                COUNT(DISTINCT CASE WHEN r.approved=1 AND r.sent_at IS NOT NULL THEN r.id END) AS sent_count,
+                COUNT(DISTINCT CASE WHEN r.approved=1 AND te.event_type='link_clicked' THEN r.id END) AS click_count
+                FROM campaigns c LEFT JOIN recipients r ON r.campaign_id=c.id
+                LEFT JOIN tracking_events te ON te.recipient_id=r.id AND te.campaign_id=c.id
+                GROUP BY c.id,c.campaign_name,c.campaign_template,c.start_date,c.status,c.created_at
+                ORDER BY c.created_at DESC,c.id DESC""")
+            campaigns = list(cursor.fetchall())
     finally:
         connection.close()
+    for campaign in campaigns:
+        approved = campaign['approved_count']
+        campaign['click_rate'] = round(100 * campaign['click_count'] / approved, 1) if approved else 0.0
+        campaign['awareness_score'] = round(100 - campaign['click_rate'], 1) if approved else None
+    return campaigns
 
-    return render_template(
-        "index.html",
-        total_campaigns=total_campaigns,
-        total_recipients=total_recipients,
-        link_clicks=link_clicks,
-        awareness_score=awareness_score,
-        campaigns=campaigns,
-    )
+
+def overview_context():
+    campaigns = campaign_overview()
+    recipients = sum(c['approved_count'] for c in campaigns)
+    clicks = sum(c['click_count'] for c in campaigns)
+    return dict(campaigns=campaigns,total_campaigns=len(campaigns),total_recipients=recipients,
+                link_clicks=clicks,awareness_score=round(100 * (recipients-clicks)/recipients,1) if recipients else None,
+                sent_count=sum(c['sent_count'] for c in campaigns),
+                active_count=sum(c['status']=='active' for c in campaigns),
+                draft_count=sum(c['status']=='draft' for c in campaigns))
+
+
+@app.route("/")
+def home():
+    return render_template('index.html', **overview_context())
+
+
+@app.route('/campaigns')
+def campaign_directory():
+    return render_template('campaigns.html', **overview_context())
+
+
+@app.route('/recipients')
+def recipient_directory():
+    connection = get_db_connection()
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("""SELECT r.id,r.full_name,r.email,r.department,r.approved,r.status,r.campaign_id,
+                c.campaign_name FROM recipients r JOIN campaigns c ON c.id=r.campaign_id
+                ORDER BY r.created_at DESC,r.id DESC""")
+            recipients = cursor.fetchall()
+    finally:
+        connection.close()
+    return render_template('recipient_directory.html',recipients=recipients)
+
+
+@app.route('/analytics')
+def analytics_overview():
+    return render_template('analytics.html', **overview_context())
+
+
+@app.route('/settings')
+def platform_settings():
+    from sender_accounts import list_accounts, selectable_accounts
+    from cryptography.fernet import Fernet
+    try:
+        Fernet(os.getenv('SENDER_ENCRYPTION_KEY','').encode())
+        encryption_ready = True
+    except (ValueError,TypeError):
+        encryption_ready = False
+    return render_template('settings.html',accounts=list_accounts(),verified_count=len(selectable_accounts()),
+                           encryption_ready=encryption_ready,https_cookies=app.config['SESSION_COOKIE_SECURE'])
 
 
 @app.route("/campaigns/new", methods=["GET", "POST"])
@@ -406,6 +427,10 @@ def send_recipient_email(campaign_id, recipient_id):
                 if request.form.get("authorized") != "on":
                     return "Authorization confirmation is required.", 400
                 try:
+                    if campaign["email_template"].get("sender_account_id"):
+                        from sender_accounts import lock_account
+                        lock_account(campaign["email_template"]["sender_account_id"], connection)
+                        campaign["_delivery_connection"] = connection
                     digest = preview_digest(campaign["email_template"], campaign, recipient,
                                             build_tracking_url(recipient["tracking_token"]))
                 except (TemplateValidationError, EmailDeliveryError) as exc:
@@ -510,6 +535,7 @@ def campaign_email_preview(campaign_id):
         return "Approved recipient not found.", 404
     template = effective_template(campaign)
     rendered = None
+    sender_unavailable = None
     if selected:
         try:
             illustration = next((a for a in template.get("assets", []) if a["kind"] == "image"), None)
@@ -517,13 +543,17 @@ def campaign_email_preview(campaign_id):
             rendered = render_email(template, campaign, selected, tracking_url,
                                     url_for("studio.asset_download", asset_id=illustration["id"]) if illustration else None)
             if campaign.get("email_template"):
-                session["reviewed_email"] = [campaign_id, selected["id"], preview_digest(template, campaign, selected, tracking_url)]
+                try:
+                    session["reviewed_email"] = [campaign_id, selected["id"], preview_digest(template, campaign, selected, tracking_url)]
+                except TemplateValidationError as exc:
+                    session.pop("reviewed_email", None)
+                    sender_unavailable = str(exc)
         except (TemplateValidationError, EmailDeliveryError) as exc:
             return str(exc), 400
 
     return render_template(
         "email_preview.html",
-        selected=selected, rendered=rendered, template=template,
+        selected=selected, rendered=rendered, template=template, sender_unavailable=sender_unavailable,
         campaign=campaign,
         recipients=recipients,
         base_url=os.getenv(

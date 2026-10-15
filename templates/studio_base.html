@@ -1,13 +1,1 @@
-<!doctype html>
-<html lang="en">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{% block title %}Email Template Studio{% endblock %} | Phishing Awareness Tracker</title>
-<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/studio.css') }}"></head>
-<body class="studio-page">
-<header class="topbar"><div class="brand"><div class="logo">PA</div><div><h1>Phishing Awareness Tracker</h1><p>Authorized security awareness</p></div></div><span class="status">Email Template Studio</span></header>
-<main class="container studio-container">
-<nav class="studio-nav" aria-label="Studio navigation"><a href="{{ url_for('home') }}">Dashboard</a><a href="{{ url_for('studio.library') }}">Template library</a><a href="{{ url_for('create_campaign') }}">Create campaign</a></nav>
-{% block content %}{% endblock %}
-<footer class="footer">Approved audiences · Authenticated senders · Engagement only</footer>
-</main></body></html>
+{% extends 'base.html' %}

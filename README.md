@@ -77,7 +77,7 @@ Existing campaigns continue to use the original default email subject and awaren
 
 ## SMTP configuration
 
-SMTP secrets are **server-only**, never entered in the Studio UI. Configure `.env` or injected environment values:
+The existing sender remains configured through server environment settings. Additional sender accounts use the operator-only [Sender Account Manager](docs/sender-accounts.md), with write-only password entry and encrypted storage. Configure `.env` or injected environment values for the original sender:
 
 - `SMTP_HOST`, `SMTP_PORT` (default 587), `SMTP_USER`, `SMTP_PASSWORD`
 - `SMTP_FROM_EMAIL`: the provider-authorized sending address
@@ -85,7 +85,7 @@ SMTP secrets are **server-only**, never entered in the Studio UI. Configure `.en
 - `SMTP_ALLOWED_FROM_EMAILS`: optional comma-separated aliases approved by the same authenticated SMTP provider
 - `BASE_URL`: the reachable application URL used in recipient tracking links
 
-Delivery always uses authenticated SMTP with STARTTLS and certificate/hostname verification. Merely listing an alias does not verify it at the provider: the operator must configure a provider-authorized identity. Delivery fails closed if SMTP setup, recipient approval, campaign activity, authorization, or asset integrity fails. SMTP credentials are not participant credentials and are not stored in templates.
+Delivery uses authenticated SMTP with STARTTLS or SSL/TLS and certificate/hostname verification. Saved sender accounts require a successful connection test; legacy campaigns retain their existing trusted environment configuration. Merely listing an alias does not verify it at the provider: the operator must configure a provider-authorized identity. Delivery fails closed if SMTP setup, recipient approval, campaign activity, authorization, or asset integrity fails. SMTP credentials are not participant credentials and are not stored in templates.
 
 For shared deployments set `SECRET_KEY` consistently across workers and `SESSION_COOKIE_SECURE=1` under HTTPS. Local development creates an ignored private signing key. This repository is an internal operator application; place the dashboard, Studio, and asset routes behind your organization's existing operator access controls. The recipient landing page stays free of credential input fields.
 
@@ -112,3 +112,7 @@ Remove-Item Env:TEST_MYSQL_DATABASE
 ```
 
 The fixture refuses a populated schema, initializes tables, and removes only its own test tables after each test. SMTP is replaced by a test double; tests never send external email. The test configuration collects the entire `tests` directory and excludes generated MySQL data from test discovery.
+
+## Professional workspace UI
+
+See [the redesign and browser-review guide](docs/ui-redesign.md) for the shared design system, responsive screens, safe email-formatting controls, and reproducible visual/accessibility checks. Run `python -m flask --app app init-db` when upgrading to add the nullable presentation settings column without resetting existing data.

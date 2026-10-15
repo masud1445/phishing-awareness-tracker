@@ -43,7 +43,7 @@ def build_campaign_message(campaign, recipient):
         email_address(recipient['email'])
         email_address(template['sender_email'])
         single_line(template['sender_name'], 'Sender name')
-        if template['sender_email'] not in sender_addresses():
+        if not template.get('sender_account_id') and template['sender_email'] not in sender_addresses():
             raise TemplateValidationError('Sender is not configured for authenticated delivery.')
         assets = template.get('assets', [])
         illustration = next((asset for asset in assets if asset['kind'] == 'image'), None)
@@ -80,6 +80,17 @@ def send_campaign_email(campaign, recipient):
         raise EmailDeliveryError('Recipient is not approved for this campaign.')
     if not campaign.get('authorized'):
         raise EmailDeliveryError('Campaign authorization confirmation is required.')
+    template = effective_template(campaign)
+    if template.get('sender_account_id'):
+        from sender_accounts import delivery_account, open_account_connection
+        try:
+            with delivery_account(template['sender_account_id'], template['sender_email'], campaign.get('_delivery_connection')) as settings:
+                message = build_campaign_message(campaign, recipient)
+                with open_account_connection(settings) as server:
+                    server.send_message(message, from_addr=template['sender_email'], to_addrs=[recipient['email']])
+        except (TemplateValidationError, smtplib.SMTPException, OSError, ValueError):
+            raise EmailDeliveryError('Verified sender delivery failed. Check account status and Test connection again.') from None
+        return True
     required = {key: os.getenv(key) for key in ('SMTP_HOST', 'SMTP_USER', 'SMTP_PASSWORD', 'SMTP_FROM_EMAIL')}
     missing = [key for key, value in required.items() if not value]
     if missing:

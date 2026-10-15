@@ -5,14 +5,14 @@ import json
 from database import get_db_connection
 from template_content import TemplateValidationError
 
-FIELDS = ('name', 'subject', 'body', 'sender_name', 'sender_email', 'reference_link')
+FIELDS = ('name', 'subject', 'body', 'sender_name', 'sender_email', 'reference_link', 'sender_account_id', 'presentation')
 
 
 def list_templates():
     connection = get_db_connection()
     try:
         with connection.cursor() as cursor:
-            cursor.execute('SELECT id, name, subject, sender_name, updated_at FROM email_templates ORDER BY id DESC')
+            cursor.execute('SELECT id, name, subject, body, sender_name, sender_email, updated_at, (SELECT COUNT(*) FROM template_assets a WHERE a.template_id=email_templates.id AND a.archived=0) AS asset_count FROM email_templates ORDER BY id DESC')
             return list(cursor.fetchall())
     finally:
         connection.close()
@@ -25,6 +25,7 @@ def get_template(template_id):
             cursor.execute('SELECT * FROM email_templates WHERE id = %s', (template_id,))
             template = cursor.fetchone()
             if template:
+                template['presentation'] = json.loads(template.get('presentation') or '{}')
                 cursor.execute("SELECT id, filename, mime_type, kind, data FROM template_assets WHERE template_id = %s AND archived = 0 ORDER BY id", (template_id,))
                 assets = cursor.fetchall()
                 template['assets'] = [asset_metadata(asset) for asset in assets]
@@ -49,6 +50,7 @@ def get_asset(asset_id):
 
 
 def save_template(values, assets, template_id=None, remove_ids=()):
+    values = values | {'presentation': json.dumps(values.get('presentation') or {})}
     connection = get_db_connection()
     try:
         connection.begin()
@@ -67,11 +69,11 @@ def save_template(values, assets, template_id=None, remove_ids=()):
             if template_id:
                 # Old asset rows remain available to immutable campaign snapshots.
                 # Preserve their bytes by ID for campaign snapshots.
-                cursor.execute('UPDATE email_templates SET name=%s, subject=%s, body=%s, sender_name=%s, sender_email=%s, reference_link=%s, updated_at=CURRENT_TIMESTAMP WHERE id=%s', tuple(values[key] for key in FIELDS) + (template_id,))
+                cursor.execute('UPDATE email_templates SET name=%s, subject=%s, body=%s, sender_name=%s, sender_email=%s, reference_link=%s, sender_account_id=%s, presentation=%s, updated_at=CURRENT_TIMESTAMP WHERE id=%s', tuple(values.get(key) for key in FIELDS) + (template_id,))
                 for asset_id in remove_ids:
                     cursor.execute('UPDATE template_assets SET archived=1 WHERE id=%s AND template_id=%s', (asset_id, template_id))
             else:
-                cursor.execute('INSERT INTO email_templates (name, subject, body, sender_name, sender_email, reference_link) VALUES (%s,%s,%s,%s,%s,%s)', tuple(values[key] for key in FIELDS))
+                cursor.execute('INSERT INTO email_templates (name, subject, body, sender_name, sender_email, reference_link, sender_account_id, presentation) VALUES (%s,%s,%s,%s,%s,%s,%s,%s)', tuple(values.get(key) for key in FIELDS))
                 template_id = cursor.lastrowid
             for asset in assets:
                 cursor.execute('INSERT INTO template_assets (template_id, filename, mime_type, kind, data) VALUES (%s,%s,%s,%s,%s)', (template_id, asset['filename'], asset['mime_type'], asset['kind'], asset['data']))
@@ -85,7 +87,7 @@ def save_template(values, assets, template_id=None, remove_ids=()):
 
 
 def apply_template(campaign_id, template):
-    snapshot = {key: template[key] for key in FIELDS}
+    snapshot = {key: template.get(key) for key in FIELDS}
     snapshot['assets'] = template['assets']
     connection = get_db_connection()
     try:

@@ -9,6 +9,7 @@ from email_service import EmailDeliveryError, build_tracking_url
 from template_content import DEFAULT_TEMPLATE, TemplateValidationError, render_email, sender_addresses, validate_template
 from template_store import apply_template, get_asset, get_template, list_templates, save_template
 from uploads import validate_upload
+from sender_accounts import synchronize_configured, selectable_accounts, require_verified
 
 studio = Blueprint('studio', __name__)
 
@@ -41,6 +42,12 @@ def editor(template_id=None):
     template = get_template(template_id) if template_id else DEFAULT_TEMPLATE.copy()
     if template is None:
         abort(404)
+    synchronize_configured()
+    accounts = selectable_accounts()
+    if not template_id:
+        default = next((a for a in accounts if a["is_default"]), None)
+        if default:
+            template.update(sender_account_id=default["id"], sender_email=default["email"], sender_name=default["display_name"])
     error = None
     preview = None
     if request.method == 'POST':
@@ -63,8 +70,9 @@ def editor(template_id=None):
                 return redirect(url_for('studio.editor', template_id=saved_id, saved=1))
         except (TemplateValidationError, EmailDeliveryError) as exc:
             error = str(exc)
-        template = template | {key: request.form.get(key, '') for key in ('name', 'subject', 'body', 'sender_name', 'sender_email', 'reference_link')}
-    return render_template('template_editor.html', template=template, error=error, preview=preview, senders=sender_addresses())
+        template['presentation'] = {key: request.form.get(key, '') for key in ('button_label','email_heading','text_alignment','content_style')}
+        template = template | {key: request.form.get(key, '') for key in ('name', 'subject', 'body', 'sender_name', 'sender_email', 'reference_link', 'sender_account_id')}
+    return render_template('template_editor.html', template=template, error=error, preview=preview, senders=sender_addresses(), accounts=accounts)
 
 
 @studio.route('/campaigns/<int:campaign_id>/studio', methods=['GET', 'POST'])
@@ -86,6 +94,9 @@ def campaign_studio(campaign_id):
             template = get_template(template_id)
             if template is None:
                 raise TemplateValidationError('Choose an existing template.')
+            if request.form.get("sender_account_id"):
+                account = require_verified(int(request.form["sender_account_id"]))
+                template = template | {"sender_account_id": account["id"], "sender_email": account["email"]}
             validate_template(template)
             if request.form.get('authorized') != 'on':
                 raise TemplateValidationError('Authorization confirmation is required.')
@@ -93,7 +104,7 @@ def campaign_studio(campaign_id):
             return redirect(url_for('campaign_email_preview', campaign_id=campaign_id))
         except (TemplateValidationError, ValueError) as exc:
             error = str(exc)
-    return render_template('campaign_studio.html', campaign=campaign, templates=list_templates(), error=error)
+    return render_template('campaign_studio.html', campaign=campaign, templates=list_templates(), error=error, accounts=selectable_accounts())
 
 
 @studio.route('/template-assets/<int:asset_id>')
@@ -128,6 +139,8 @@ def configure_studio(app):
                       SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE='Lax',
                       SESSION_COOKIE_SECURE=os.getenv('SESSION_COOKIE_SECURE', '0') == '1')
     app.register_blueprint(studio)
+    from sender_views import senders
+    app.register_blueprint(senders)
 
     @app.before_request
     def enforce_upload_request_limit():

@@ -29,5 +29,14 @@ def initialize_database():
             for statement in schema.split(';'):
                 if statement.strip():
                     cursor.execute(statement)
+            cursor.execute("SELECT COUNT(*) AS total FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='email_templates' AND column_name='sender_account_id'")
+            if not cursor.fetchone()['total']:
+                cursor.execute('ALTER TABLE email_templates ADD COLUMN sender_account_id INTEGER NULL')
+            cursor.execute("SELECT COUNT(*) AS total FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='email_templates' AND column_name='presentation'")
+            if not cursor.fetchone()['total']:
+                cursor.execute('ALTER TABLE email_templates ADD COLUMN presentation TEXT NULL')
+            cursor.execute('SELECT id FROM sender_preferences WHERE id=1')
+            if not cursor.fetchone():
+                cursor.execute('INSERT INTO sender_preferences (id,default_sender_id) VALUES (1,NULL)')
     finally:
         connection.close()

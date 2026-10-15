@@ -80,10 +80,42 @@ def validate_template(values):
         raise TemplateValidationError('Use plain text, without HTML or credential collection forms.')
     for key in ('subject', 'body'):
         validate_placeholders(result[key])
+    account_id = values.get('sender_account_id')
+    result['sender_account_id'] = None
+    if account_id:
+        from sender_accounts import require_verified
+        try:
+            account_id = int(account_id)
+        except (ValueError, TypeError):
+            raise TemplateValidationError('Choose a saved sender account.') from None
+        account = require_verified(account_id)
+        if result['sender_email'] and result['sender_email'] != account['email']:
+            raise TemplateValidationError('Sender address does not match the selected verified account.')
+        result['sender_email'] = account['email']
+        result['sender_account_id'] = account_id
     email_address(result['sender_email'])
-    if result['sender_email'] not in sender_addresses():
+    if not account_id and result['sender_email'] not in sender_addresses():
         raise TemplateValidationError('Sender must be an operator-configured authenticated SMTP identity.')
     result['reference_link'] = https_link(result['reference_link'])
+    result['presentation'] = validate_presentation(values)
+    return result
+
+
+def validate_presentation(values):
+    raw = values.get('presentation') or values
+    if not isinstance(raw, dict) and not hasattr(raw, 'get'):
+        raise TemplateValidationError('Invalid email presentation settings.')
+    result = {'email_heading': str(raw.get('email_heading', '')).strip(),
+              'button_label': str(raw.get('button_label', 'Review information')).strip(),
+              'text_alignment': str(raw.get('text_alignment', 'left')),
+              'content_style': str(raw.get('content_style', 'standard'))}
+    single_line(result['button_label'], 'Tracking button label', 80)
+    if result['email_heading']:
+        single_line(result['email_heading'], 'Email heading', 200)
+        if '<' in result['email_heading'] or '>' in result['email_heading']:
+            raise TemplateValidationError('Email headings must use plain text.')
+    if result['text_alignment'] not in ('left', 'center') or result['content_style'] not in ('standard', 'sectioned', 'compact'):
+        raise TemplateValidationError('Choose a supported email alignment and layout.')
     return result
 
 
@@ -94,19 +126,34 @@ def render_email(template, campaign, recipient, tracking_url, image_source=None)
         return TOKEN.sub(lambda match: str(context[match[1]]), text)
     subject = single_line(substitute(template['subject']), 'Rendered subject', 998)
     body = substitute(template['body'])
-    text = body + '\n\n'
+    presentation = validate_presentation(template)
+    heading = presentation['email_heading']
+    text = (heading + '\n\n' if heading else '') + body + '\n\n'
     # Always retain a campaign link even if an author leaves out its placeholder.
     if tracking_url not in body:
-        text += 'Review information: ' + tracking_url + '\n\n'
+        text += presentation['button_label'] + ': ' + tracking_url + '\n\n'
     reference = https_link(template.get('reference_link', ''))
     if reference:
         text += 'Reference: ' + reference + '\n\n'
     text += NOTICE
-    html = '<div style="font-family:Arial,sans-serif;max-width:640px;margin:auto;padding:28px;color:#172033">'
+    alignment = presentation['text_alignment']
+    padding = 20 if presentation['content_style'] == 'compact' else 32
+    html = f'<div style="font-family:Arial,sans-serif;max-width:640px;margin:auto;padding:{padding}px;color:#172033;text-align:{alignment};background:#ffffff;border-top:4px solid #635be7">'
+    if heading:
+        html += '<h1 style="font-size:26px;line-height:1.3;margin:0 0 24px">' + escape(heading) + '</h1>'
     if image_source:
         html += f'<img src="{escape(image_source, quote=True)}" alt="Campaign illustration" style="max-width:100%;height:auto">'
-    html += '<div style="white-space:pre-wrap;line-height:1.7">' + escape(body) + '</div>'
-    html += f'<p><a href="{escape(tracking_url, quote=True)}">Review information</a></p>'
+    if presentation['content_style'] == 'sectioned':
+        for line in body.split('\n'):
+            if line.startswith('## '):
+                html += '<h2 style="font-size:20px;margin:24px 0 12px">' + escape(line[3:]) + '</h2>'
+            elif line.strip() == '---':
+                html += '<hr style="border:0;border-top:1px solid #dfe4f0;margin:24px 0">'
+            else:
+                html += '<div style="white-space:pre-wrap;line-height:1.7;min-height:12px">' + escape(line) + '</div>'
+    else:
+        html += '<div style="white-space:pre-wrap;line-height:1.7">' + escape(body) + '</div>'
+    html += f'<p style="margin:24px 0"><a style="display:inline-block;padding:12px 20px;background:#4f46e5;color:#ffffff;border-radius:8px;text-decoration:none;font-weight:bold" href="{escape(tracking_url, quote=True)}">' + escape(presentation['button_label']) + '</a></p>'
     if reference:
         html += f'<p>Reference: <a href="{escape(reference, quote=True)}">{escape(reference)}</a></p>'
     html += '<p style="font-size:12px;color:#64748b">' + NOTICE + '</p></div>'
@@ -118,5 +165,9 @@ def preview_digest(template, campaign, recipient, tracking_url):
     """Bind review to exact content, assets, recipient, URL, and sender configuration."""
     payload = {'template': template, 'campaign': campaign['campaign_name'],
                'recipient': [recipient['id'], recipient['full_name'], recipient['email']],
-               'tracking_url': tracking_url, 'senders': sender_addresses()}
+               'tracking_url': tracking_url, 'senders': sender_addresses(), 'renderer_version': 2}
+    if template.get('sender_account_id'):
+        from sender_accounts import require_verified
+        account = require_verified(template['sender_account_id'], template['sender_email'])
+        payload['sender_account_revision'] = account['revision']
     return hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()

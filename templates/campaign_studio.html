@@ -1,6 +1,86 @@
 {% extends 'studio_base.html' %}
+{% from 'components/ui.html' import icon,steps,campaign_nav %}
 {% block content %}
-<section class="studio-heading"><div><span class="eyebrow">CAMPAIGN MESSAGE</span><h2>{{ campaign.campaign_name }}</h2><p>Choose a reusable template. This campaign saves an independent copy of its message and asset list.</p></div><a class="btn-secondary" href="{{ url_for('campaign_recipients', campaign_id=campaign.id) }}">Back to campaign</a></section>
-{% if error %}<div class="studio-error" role="alert">{{ error }}</div>{% endif %}
-<section class="panel"><form method="post"><input type="hidden" name="csrf_token" value="{{ studio_csrf() }}"><div class="form-group"><label for="template_id">Email template</label><select id="template_id" name="template_id" required><option value="">Choose a saved template</option>{% for template in templates %}<option value="{{ template.id }}">{{ template.name }} — {{ template.subject }}</option>{% endfor %}</select></div><p><a href="{{ url_for('studio.editor') }}">Create a template</a> or <a href="{{ url_for('studio.library') }}">browse the library</a>.</p><label class="authorization-box"><input type="checkbox" name="authorized" required><span>I confirm this message is for an authorized awareness campaign with approved recipients and does not request passwords, OTPs, or authentication credentials.</span></label><div class="studio-actions"><button class="btn" type="submit">Apply template and preview →</button></div></form></section>
+<section class="studio-heading">
+<div>
+<span class="eyebrow">CAMPAIGN MESSAGE</span>
+<h2>{{ campaign.campaign_name }}</h2>
+<p>Choose a reusable template. This campaign saves an independent copy of its message and asset list.</p>
+</div>
+<a class="btn-secondary" href="{{ url_for('campaign_recipients', campaign_id=campaign.id) }}">Back to campaign</a>
+</section>
+{{ steps(3) }}{{ campaign_nav(campaign) }}
+{% if error %}
+<div class="studio-error" role="alert">{{ error }}</div>
+{% endif %}
+<div class="two-column">
+<section class="panel">
+<div class="step-heading">
+<span>03</span>
+<div>
+<h3>Email & sender</h3>
+<p>Save a reviewed message identity for this campaign.</p>
+</div>
+</div>
+<form method="post">
+<input type="hidden" name="csrf_token" value="{{ studio_csrf() }}">
+<div class="form-group">
+<label for="template_id">Email template</label>
+<select id="template_id" name="template_id" required>
+<option value="">Choose a saved template</option>
+{% for template in templates %}
+<option value="{{ template.id }}">{{ template.name }} — {{ template.subject }}</option>
+{% endfor %}
+</select>
+</div>
+<div class="form-group">
+<label for="sender_account_id">Campaign sender</label>
+<select name="sender_account_id" id="sender_account_id">
+<option value="">Use template's saved sender</option>
+{% for account in accounts %}
+<option value="{{ account.id }}">{{ account.display_name }} &lt;{{ account.email }}&gt;</option>
+{% endfor %}
+</select>
+<small>Changing the sender requires a fresh preview.</small>
+</div>
+<p>
+<a href="{{ url_for('studio.editor') }}">Create a template</a> or <a href="{{ url_for('studio.library') }}">browse the library</a>.</p>
+<label class="authorization-box">
+<input type="checkbox" name="authorized" required>
+<span>I confirm this message is for an authorized awareness campaign with approved recipients and does not request passwords, OTPs, or authentication credentials.</span>
+</label>
+<div class="studio-actions">
+<button class="btn" type="submit">Apply template and preview →</button>
+</div>
+</form>
+</section>
+<aside class="callout">
+<div class="guidance-icon">{{ icon('mail',26) }}</div>
+<h3>Your campaign's own message</h3>
+<p>Applying a template creates an independent snapshot of its content, sender identity, and protected asset references.</p>
+<ol class="guide-list">
+<li>
+<span>1</span>
+<div>
+<strong>Choose reusable content</strong>
+<p>The original stays available in your library.</p>
+</div>
+</li>
+<li>
+<span>2</span>
+<div>
+<strong>Confirm the sender</strong>
+<p>Use the template's identity or choose another verified account.</p>
+</div>
+</li>
+<li>
+<span>3</span>
+<div>
+<strong>Preview an actual recipient</strong>
+<p>Review the personalized message before sending.</p>
+</div>
+</li>
+</ol>
+</aside>
+</div>
 {% endblock %}

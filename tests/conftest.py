@@ -7,6 +7,9 @@ import app as app_module
 import database
 import studio
 import template_store
+import sender_accounts
+import sender_views
+from cryptography.fernet import Fernet
 from sqlite_adapter import SQLiteConnection
 
 
@@ -38,8 +41,9 @@ def db_client(tmp_path, monkeypatch):
         connection.connection.executescript(Path(__file__).with_name('sqlite_schema.sql').read_text())
         connection.close()
         mysql = False
-    for module in (app_module, template_store, studio):
+    for module in (app_module, template_store, studio, sender_accounts):
         monkeypatch.setattr(module, 'get_db_connection', factory)
+    monkeypatch.setenv('SENDER_ENCRYPTION_KEY', Fernet.generate_key().decode())
     monkeypatch.setenv('SMTP_FROM_EMAIL', 'awareness@example.com')
     monkeypatch.setenv('SMTP_ALLOWED_FROM_EMAILS', 'training@example.com')
     monkeypatch.setenv('SMTP_HOST', 'smtp.example.com')
@@ -54,7 +58,7 @@ def db_client(tmp_path, monkeypatch):
         connection = factory()
         try:
             with connection.cursor() as cursor:
-                for table in ('campaign_email_settings', 'template_assets', 'email_templates', 'tracking_events', 'recipients', 'campaigns'):
+                for table in ('campaign_email_settings', 'template_assets', 'email_templates', 'tracking_events', 'recipients', 'campaigns', 'sender_preferences', 'sender_accounts'):
                     cursor.execute('DROP TABLE ' + table)
         finally:
             connection.close()

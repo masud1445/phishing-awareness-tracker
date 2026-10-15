@@ -1,11 +1,75 @@
 {% extends 'studio_base.html' %}
+{% from 'components/ui.html' import icon,empty %}
+{% block title %}Template Studio · Phishing Awareness Tracker{% endblock %}
 {% block content %}
-<section class="studio-heading"><div><span class="eyebrow">CONTENT WORKSPACE</span><h2>Email Template Studio</h2><p>Build reusable awareness messages. Personalize them for each approved participant.</p></div><a class="btn" href="{{ url_for('studio.editor') }}">+ New template</a></section>
-{% if not senders %}<div class="studio-notice">Sender setup needed: configure an authenticated SMTP identity on the server before saving templates. Credentials are never entered here.</div>{% endif %}
-<section class="studio-metrics"><div><strong>{{ templates|length }}</strong><span>Reusable templates</span></div><div><strong>3</strong><span>Personalization placeholders</span></div><div><strong>5 MB</strong><span>Maximum per upload</span></div></section>
+<div class="page-heading">
+<div>
+<span class="eyebrow">CONTENT WORKSPACE</span>
+<h2>Email Template Studio</h2>
+<p>Create thoughtful awareness messages. Personalize them, review them, and reuse them with confidence.</p>
+</div>
+<div class="heading-actions">
+<a class="btn-secondary" href="{{ url_for('senders.manage') }}">{{ icon('lock',18) }} Manage senders</a>
+<a class="btn" href="{{ url_for('studio.editor') }}">{{ icon('plus',18) }} New template</a>
+</div>
+</div>
+<section class="studio-metrics">
+<div>
+<strong>{{ templates|length }}</strong>
+<span>Reusable email templates</span>
+</div>
+<div>
+<strong>3 tokens</strong>
+<span>Recipient and campaign personalization</span>
+</div>
+<div>
+<strong>5 MB</strong>
+<span>Maximum per protected upload</span>
+</div>
+</section>
+<section data-filter-scope>
+{% if templates %}
+<div class="filter-bar">
+<label class="search-control">{{ icon('search',18) }}<span class="sr-only">Search templates</span>
+<input type="search" data-search placeholder="Search templates or sender names">
+</label>
+<span class="filter-count" data-filter-count>
+</span>
+</div>
+{% endif %}
 <div class="library-grid">
 {% for template in templates %}
-<article class="template-card"><span class="template-icon" aria-hidden="true">✉</span><span class="studio-tag">AWARENESS EMAIL</span><h3>{{ template.name }}</h3><p>{{ template.subject }}</p><dl><dt>Display name</dt><dd>{{ template.sender_name }}</dd><dt>Updated</dt><dd>{{ template.updated_at }}</dd></dl><a class="btn-secondary" href="{{ url_for('studio.editor', template_id=template.id) }}">Open template →</a></article>
-{% else %}<div class="studio-empty"><h3>Your library starts here</h3><p>Create a message once, then reuse it across authorized campaigns.</p><a class="btn" href="{{ url_for('studio.editor') }}">Create your first template</a></div>{% endfor %}
+<article class="template-card" data-filter-row>
+<span class="template-icon">{{ icon('mail',25) }}</span>
+<span class="studio-tag">Reusable awareness email</span>
+<h3>{{ template.name }}</h3>
+<p>{{ template.subject }}</p>
+<dl>
+<dt>Sender</dt>
+<dd>{{ template.sender_name }}<br>
+<span class="muted">{{ template.sender_email }}</span>
+</dd>
+<dt>Assets</dt>
+<dd>{{ template.asset_count }} protected files</dd>
+<dt>Updated</dt>
+<dd>{{ template.updated_at }}</dd>
+</dl>
+{% if '{{' in template.body or '{{' in template.subject %}
+<span class="badge neutral">Personalized content</span>
+{% endif %}
+<div class="heading-actions" style="margin-top:20px">
+<a class="btn-secondary" href="{{ url_for('studio.editor',template_id=template.id) }}">Edit & preview {{ icon('arrow',16) }}</a>
+</div>
+</article>
+{% else %}{{ empty('A great message starts here','Build an awareness email with personalized content, a verified sender, and safely validated assets.',url_for('studio.editor'),'Create your first template','mail') }}{% endfor %}
+</div>
+<p class="no-filter-results" hidden>No matching templates. Try a different search.</p>
+</section>
+<div class="callout" style="margin-top:26px;display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap">
+<div>
+<h3>Reusable content. Independent campaigns.</h3>
+<p style="margin:0">Library edits never change a campaign's saved email snapshot.</p>
+</div>
+<a class="btn-secondary" href="{{ url_for('campaign_directory') }}">Use a template in a campaign {{ icon('arrow',16) }}</a>
 </div>
 {% endblock %}

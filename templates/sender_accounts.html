@@ -1,0 +1,78 @@
+{% extends 'studio_base.html' %}
+{% from 'components/ui.html' import icon,empty %}
+{% block title %}Sender Accounts · Phishing Awareness Tracker{% endblock %}
+{% block content %}
+<div class="page-heading">
+<div>
+<span class="eyebrow">EMAIL ACCOUNT MANAGER</span>
+<h2>Sender Accounts</h2>
+<p>Give every campaign a trusted identity. Manage connections and verify them without sending an email.</p>
+</div>
+<a class="btn" href="{{ url_for('senders.edit') }}">+ Add sender</a>
+</div>
+{% if error %}
+<div class="studio-error" role="alert">{{ error }}</div>
+{% endif %}
+{% if request.args.get('saved') %}
+<div class="studio-success" role="status">Account saved. Test connection before selecting it for a new message.</div>
+{% endif %}
+{% if request.args.get('verified') == '1' %}
+<div class="studio-success" role="status">TLS, authentication, and sender acceptance verified. No recipient or message was submitted.</div>
+{% endif %}
+<section class="studio-metrics">
+<div>
+<strong>{{ accounts|length }}</strong>
+<span>Available sender accounts</span>
+</div>
+<div>
+<strong>{{ accounts|selectattr('verified')|selectattr('enabled')|list|length }}</strong>
+<span>Verified and enabled identities</span>
+</div>
+<div>
+<strong>TLS</strong>
+<span>Encrypted, certificate-verified connections</span>
+</div>
+</section>
+<div class="library-grid">
+{% for account in accounts %}
+<article class="template-card sender-account-card">
+<div class="account-heading">
+<span class="template-icon">{{ icon('mail',25) }}</span>
+<span class="badge {{ 'disabled' if not account.enabled else ('verified' if account.verified else 'pending') }}">{{ 'Disabled' if not account.enabled else ('Verified' if account.verified else 'Needs verification') }}</span>
+</div>
+<div class="account-provider">{{ 'Microsoft / Outlook' if account.provider == 'outlook' else account.provider|title }} SMTP{% if account.is_default %} · <strong>Default</strong>
+{% endif %}
+</div>
+<h3>{{ account.display_name }}</h3>
+<p class="account-address">{{ account.email }}</p>
+<div class="connection-detail">
+<span>AUTHENTICATED CONNECTION</span>{{ account.smtp_host or 'Configure on server' }} : {{ account.smtp_port }}<br>{{ account.tls_mode|upper }} · Password never displayed</div>
+{% if account.source_key %}
+<div class="configured-note">Existing server identity. Credentials remain in server environment settings.</div>
+{% endif %}
+<div class="sender-actions">
+{% if not account.source_key %}
+<a class="btn-secondary" href="{{ url_for('senders.edit',account_id=account.id) }}">Edit</a>
+{% endif %}
+{% for action,label in [('test','Test connection'),('default','Set default'),('disable','Disable'),('enable','Enable'),('delete','Delete')] %}
+{% if (action == 'enable' and not account.enabled) or (action != 'enable' and account.enabled) or action == 'delete' %}
+<form method="post" action="{{ url_for('senders.action',account_id=account.id,action=action) }}" {% if action == 'delete' %}data-confirm-delete{% endif %}>
+<input type="hidden" name="csrf_token" value="{{ studio_csrf() }}">
+<button class="btn-secondary {{ 'btn-danger' if action == 'delete' else '' }}" type="submit" {% if action == 'default' and not account.verified %}disabled{% endif %}>{{ label }}</button>
+</form>
+{% endif %}
+{% endfor %}
+</div>
+</article>
+{% else %}{{ empty('Add your first trusted identity','Connect Gmail, Microsoft/Outlook, or a custom SMTP account. Verify it before any delivery.',url_for('senders.edit'),'Add sender','mail') }}{% endfor %}
+</div>
+<section class="callout" style="margin-top:26px">
+<div class="control-item">
+<span class="control-icon">{{ icon('lock',22) }}</span>
+<div>
+<h3>Private credentials. Preserved history.</h3>
+<p style="margin:0">Saved passwords are encrypted at rest. Disabling or deleting a sender blocks delivery while keeping existing campaign messages readable.</p>
+</div>
+</div>
+</section>
+{% endblock %}

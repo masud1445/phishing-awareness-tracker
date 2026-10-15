@@ -1,0 +1,30 @@
+{% from 'components/ui.html' import icon %}
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>
+{% block title %}Security awareness{% endblock %}
+</title>
+<link rel="stylesheet" href="{{ url_for('static',filename='css/style.css') }}">
+<link rel="icon" type="image/svg+xml" href="{{ url_for('static',filename='favicon.svg') }}">
+</head>
+<body class="public-page">
+<header class="public-header">
+<span class="brand-mark">{{ icon('shield',25) }}</span>
+<div>
+<strong>Security awareness</strong>
+<small>Phishing Awareness Tracker</small>
+</div>
+</header>
+<main class="public-content">
+{% block content %}
+{% endblock %}
+</main>
+<footer class="app-footer">
+<span>Authorized awareness program</span>
+<span>Engagement only · Privacy protected</span>
+</footer>
+</body>
+</html>

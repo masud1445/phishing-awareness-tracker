@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% from 'components/ui.html' import icon,metric,comparison,empty,campaign_table %}
+{% block title %}Analytics · Phishing Awareness Tracker{% endblock %}
+{% block content %}
+<div class="page-heading">
+<div>
+<span class="eyebrow">ENGAGEMENT INSIGHTS</span>
+<h2>Awareness analytics</h2>
+<p>Understand observed behavior across your approved campaign audiences.</p>
+</div>
+<span class="badge neutral">{{ icon('chart',16) }} Live database metrics</span>
+</div>
+<section class="stats">{{ metric('Approved recipients',total_recipients,'Participant memberships, not unique people','users','cyan') }}{{ metric('Emails sent',sent_count,'Recipients with a recorded delivery','mail') }}{{ metric('Unique clicks',link_clicks,'Repeated clicks are counted once','click','orange') }}{{ metric('Awareness Score',awareness_score|string+'%' if awareness_score is not none else '—','100% minus the approved-audience click rate','shield','green') }}</section>
+<div class="dashboard-grid">
+<section class="panel">{{ comparison(campaigns) }}</section>
+<section class="panel">
+<div class="panel-heading">
+<div>
+<h3>Audience engagement</h3>
+<p>Across all approved campaign memberships.</p>
+</div>
+</div>
+{% if total_recipients %}
+{% set rate=(100*link_clicks/total_recipients)|round(1) %}
+<div class="donut-layout">
+<div class="engagement-donut" style="--engagement:{{ rate }}%" role="img" aria-label="{{ rate }} percent of approved recipients clicked">
+<div class="donut-center">
+<strong>{{ rate }}%</strong>
+<small>Click rate</small>
+</div>
+</div>
+<div class="legend">
+<span>
+<i>
+</i> {{ link_clicks }} clicked</span>
+<span>
+<i>
+</i> {{ total_recipients-link_clicks }} no recorded click</span>
+</div>
+</div>
+{% else %}{{ empty('Waiting for an audience','Engagement distribution appears after recipients are approved.',glyph='chart') }}{% endif %}
+<p style="margin-top:22px;font-size:13px">A click signals a learning opportunity. These metrics measure campaign engagement, not individual intent or overall security maturity.</p>
+</section>
+</div>
+<section class="panel">
+<div class="panel-heading">
+<div>
+<h3>Campaign comparisons</h3>
+<p>Explore individual results for delivery and participant activity.</p>
+</div>
+</div>
+{% if campaigns %}{{ campaign_table(campaigns) }}{% else %}{{ empty('Insights begin with a campaign','Your campaign comparisons will appear here when you create an awareness exercise.',url_for('create_campaign'),'Create campaign','chart') }}{% endif %}
+</section>
+{% endblock %}

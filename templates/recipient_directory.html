@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+{% from 'components/ui.html' import icon,empty %}
+{% block title %}Recipients · Phishing Awareness Tracker{% endblock %}
+{% block content %}
+<div class="page-heading">
+<div>
+<span class="eyebrow">AUDIENCE WORKSPACE</span>
+<h2>Recipients</h2>
+<p>Campaign memberships, approval states, and engagement in one place.</p>
+</div>
+<a class="btn-secondary" href="{{ url_for('campaign_directory') }}">{{ icon('folder',18) }} Manage by campaign</a>
+</div>
+<div class="workspace-tip">Approval belongs to a campaign. A recipient may appear more than once when participating in separate campaigns.</div>
+<section class="panel" data-filter-scope>
+<div class="panel-heading">
+<div>
+<h3>Your campaign audiences</h3>
+<p>{{ recipients|length }} recipient memberships · {{ recipients|selectattr('approved')|list|length }} approved</p>
+</div>
+</div>
+{% if recipients %}
+<div class="filter-bar">
+<label class="search-control">{{ icon('search',18) }}<span class="sr-only">Search recipients</span>
+<input type="search" data-search placeholder="Search person, email, or campaign">
+</label>
+<span class="filter-count" data-filter-count>
+</span>
+</div>
+<div class="table-scroll">
+<table>
+<caption class="sr-only">All campaign recipients</caption>
+<thead>
+<tr>
+<th>Recipient</th>
+<th>Campaign</th>
+<th>Department</th>
+<th>Approval</th>
+<th>Engagement</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+{% for r in recipients %}
+<tr data-filter-row>
+<td>
+<div class="table-identity">
+<span class="avatar">{{ r.full_name[:1]|upper }}</span>
+<div>
+<strong>{{ r.full_name }}</strong>
+<small>{{ r.email }}</small>
+</div>
+</div>
+</td>
+<td>{{ r.campaign_name }}</td>
+<td>{{ r.department or '—' }}</td>
+<td>
+<span class="badge {{ 'approved' if r.approved else 'pending' }}">{{ 'Approved' if r.approved else 'Needs approval' }}</span>
+</td>
+<td>
+<span class="badge {{ r.status }}">{{ r.status|title }}</span>
+</td>
+<td>
+<a class="btn-quiet" href="{{ url_for('campaign_recipients',campaign_id=r.campaign_id) }}">Manage {{ icon('arrow',16) }}</a>
+</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+<p class="no-filter-results" hidden>No matching recipients. Try a different search.</p>
+{% else %}{{ empty('Give your campaign an audience','Add recipients inside a campaign, then approve each participant before delivery.',url_for('campaign_directory'),'Choose a campaign','users') }}{% endif %}
+</section>
+{% endblock %}

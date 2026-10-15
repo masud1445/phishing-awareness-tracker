@@ -1,28 +1,233 @@
 {% extends 'studio_base.html' %}
-{% block title %}Template editor{% endblock %}
+{% from 'components/ui.html' import icon %}
+{% block title %}Template editor<script src="{{ url_for('static', filename='js/senders.js') }}" defer>
+</script>
+{% endblock %}
 {% block content %}
-<section class="studio-heading"><div><span class="eyebrow">MESSAGE DESIGN</span><h2>{{ 'Edit template' if template.id else 'Create template' }}</h2><p>Compose an awareness message, add supporting files, and review before delivery.</p></div><a class="btn-secondary" href="{{ url_for('studio.library') }}">Back to library</a></section>
-{% if error %}<div class="studio-error" role="alert">{{ error }}</div>{% endif %}
-{% if request.args.get('saved') %}<div class="studio-success" role="status">Template saved. Existing campaign snapshots remain unchanged.</div>{% endif %}
+<section class="studio-heading">
+<div>
+<span class="eyebrow">MESSAGE DESIGN</span>
+<h2>{{ 'Edit template' if template.id else 'Create template' }}</h2>
+<p>Compose an awareness message, add supporting files, and review before delivery.</p>
+</div>
+<a class="btn-secondary" href="{{ url_for('studio.library') }}">Back to library</a>
+</section>
+{% if error %}
+<div class="studio-error" role="alert">{{ error }}</div>
+{% endif %}
+{% if request.args.get('saved') %}
+<div class="studio-success" role="status">Template saved. Existing campaign snapshots remain unchanged.</div>
+{% endif %}
 <form method="post" enctype="multipart/form-data" class="studio-editor">
 <input type="hidden" name="csrf_token" value="{{ studio_csrf() }}">
-<div class="studio-main">
-<section class="panel"><div class="step-heading"><span>01</span><div><h3>Message details</h3><p>Plain text is formatted safely for email.</p></div></div>
-<div class="form-grid">
-<div class="form-group full-width"><label for="name">Template name</label><input id="name" name="name" maxlength="200" required value="{{ template.name }}"></div>
-<div class="form-group"><label for="sender_name">Sender display name</label><input id="sender_name" name="sender_name" maxlength="200" required value="{{ template.sender_name }}"></div>
-<div class="form-group"><label for="sender_email">Authenticated sender address</label><select id="sender_email" name="sender_email" required><option value="">Select configured identity</option>{% for sender in senders %}<option value="{{ sender }}" {% if template.sender_email == sender %}selected{% endif %}>{{ sender }}</option>{% endfor %}</select><small>Identities are managed in server configuration.</small></div>
-<div class="form-group full-width"><label for="subject">Subject</label><input id="subject" name="subject" maxlength="200" required value="{{ template.subject }}"></div>
-<div class="form-group full-width"><label for="body">Message body</label><textarea id="body" name="body" rows="13" maxlength="20000" required>{{ template.body }}</textarea><small>No HTML, forms, or credential collection. A campaign tracking link and privacy notice are always included.</small></div>
-<div class="form-group full-width"><label for="reference_link">Reference link <span class="muted">(optional)</span></label><input id="reference_link" name="reference_link" type="url" maxlength="2048" placeholder="https://your-organization.example/awareness" value="{{ template.reference_link }}"><small>HTTPS only. Displayed separately from the tracked awareness link; never fetched by the server.</small></div>
-</div></section>
-<section class="panel"><div class="step-heading"><span>02</span><div><h3>Supporting assets</h3><p>Passive files only. Up to 5 MB per file.</p></div></div>
-<div class="form-grid"><div class="form-group"><label for="image">Email illustration <span class="muted">(optional)</span></label><input id="image" name="image" type="file" accept=".png,.jpg,.jpeg"><small>One PNG or JPEG. Images are validated and re-encoded.</small></div><div class="form-group"><label for="attachments">Attachments <span class="muted">(optional)</span></label><input id="attachments" name="attachments" type="file" multiple accept=".pdf,.png,.jpg,.jpeg,.docx,.txt"><small>Up to five PDF, PNG, JPG/JPEG, DOCX, or TXT files. Scripts, macros, archives, and active document content are rejected.</small></div></div>
-{% if template.assets %}<ul class="asset-list">{% for asset in template.assets %}<li><div><a href="{{ url_for('studio.asset_download', asset_id=asset.id) }}">{{ asset.filename }}</a><small>{{ asset.kind }} · {{ (asset.size / 1024)|round(1) }} KB</small></div><label><input type="checkbox" name="remove_assets" value="{{ asset.id }}"> Remove from template</label></li>{% endfor %}</ul>{% endif %}
-</section>
-<div class="studio-actions"><button class="btn-secondary" name="action" value="preview" type="submit">Preview message</button><button class="btn" name="action" value="save" type="submit">Save reusable template</button></div>
+<div class="editor-command-bar">
+<div>
+<strong>Compose · personalize · review</strong>
+<p>Save your message and protected assets as a reusable template.</p>
 </div>
-<aside class="studio-sidebar"><section class="panel"><h3>Personalization</h3><p>Use these placeholders in the subject or body.</p><dl class="placeholder-list"><dt><code>{% raw %}{{recipient_name}}{% endraw %}</code></dt><dd>Approved recipient’s full name</dd><dt><code>{% raw %}{{campaign_name}}{% endraw %}</code></dt><dd>The campaign’s name</dd><dt><code>{% raw %}{{tracking_url}}{% endraw %}</code></dt><dd>Unique awareness tracking link</dd></dl></section><section class="panel safety-panel"><h3>Delivery guardrails</h3><p>✓ Approved recipients only</p><p>✓ Active, authorized campaign</p><p>✓ Review the actual recipient message</p><p>✓ Authenticated SMTP sender</p><p>✓ No passwords, OTPs, or participant credentials</p></section>
-{% if preview %}<section class="panel editor-preview"><h3>Sample preview</h3><p class="muted">Example personalization. Save uploaded assets first; review the complete message from the campaign before sending.</p><strong>{{ preview.subject }}</strong><iframe title="Sample email preview" sandbox srcdoc="{{ preview.html }}"></iframe><details><summary>Plain-text version</summary><pre>{{ preview.text }}</pre></details></section>{% endif %}
-</aside></form>
+<div class="heading-actions">
+<button class="btn-secondary" type="submit" name="action" value="preview">{{ icon('mail',16) }} Preview message</button>
+<button class="btn" type="submit" name="action" value="save">Save template {{ icon('check',16) }}</button>
+</div>
+</div>
+<div class="studio-main">
+<section class="panel">
+<div class="step-heading">
+<span>01</span>
+<div>
+<h3>Message details</h3>
+<p>Plain text is formatted safely for email.</p>
+</div>
+</div>
+<div class="form-grid">
+<div class="form-group full-width">
+<label for="name">Template name</label>
+<input id="name" name="name" maxlength="200" required value="{{ template.name }}">
+</div>
+<div class="form-group">
+<label for="sender_name">Sender display name</label>
+<input id="sender_name" name="sender_name" maxlength="200" required value="{{ template.sender_name }}">
+</div>
+<div class="form-group">
+<label for="sender_account_id">Authenticated sender address</label>
+<div class="sender-links">
+<a href="{{ url_for('senders.edit') }}">+ Add sender</a>
+<a href="{{ url_for('senders.manage') }}">Manage senders</a>
+</div>
+<select id="sender_account_id" name="sender_account_id" required>
+<option value="">Choose a verified sender</option>
+{% for account in accounts %}
+<option value="{{ account.id }}" data-email="{{ account.email }}" {% if template.sender_account_id|string == account.id|string %}selected{% endif %}>{{ account.display_name }} &lt;{{ account.email }}&gt;{% if account.is_default %} · Default{% endif %}
+</option>
+{% endfor %}
+</select>
+<input type="hidden" id="sender_email" name="sender_email" value="{{ template.sender_email }}">
+<small>Only verified, enabled accounts can be selected. Existing configured identities: {{ senders|join(', ') or 'none' }}. Existing campaign snapshots remain readable.</small>
+</div>
+<div class="form-group full-width">
+<label for="subject">Subject</label>
+<input id="subject" name="subject" maxlength="200" required value="{{ template.subject }}">
+</div>
+<div class="form-group full-width">
+<label for="body">Message content</label>
+<div class="format-toolbar" role="toolbar" aria-label="Safe text formatting">
+<button type="button" data-format="heading">Heading</button>
+<button type="button" data-format="paragraph">Paragraph</button>
+<button type="button" data-format="section">Content section</button>
+<button type="button" data-format="divider">Divider</button>
+<span class="toolbar-divider" aria-hidden="true">
+</span>
+<button type="button" data-token="{% raw %}{{recipient_name}}{% endraw %}" title="Insert approved recipient name">Recipient name</button>
+<button type="button" data-token="{% raw %}{{campaign_name}}{% endraw %}" title="Insert campaign name">Campaign name</button>
+<button type="button" data-token="{% raw %}{{tracking_url}}{% endraw %}" title="Insert unique tracking URL">Tracking link</button>
+</div>
+<textarea id="body" name="body" rows="10" maxlength="20000" required>{{ template.body }}</textarea>
+<small>Plain text only. Use ## headings and --- dividers with the sectioned layout. No HTML or forms. A tracking button and privacy notice are always included.</small>
+</div>
+<div class="form-group full-width">
+<label for="reference_link">Reference link <span class="muted">(optional)</span>
+</label>
+<input id="reference_link" name="reference_link" type="url" maxlength="2048" placeholder="https://your-organization.example/awareness" value="{{ template.reference_link }}">
+<small>HTTPS only. Displayed separately from the tracked awareness link; never fetched by the server.</small>
+</div>
+<div class="form-group">
+<label for="button_label">Tracking button label</label>
+<input id="button_label" name="button_label" maxlength="80" value="{{ template.presentation.button_label if template.presentation else 'Review information' }}" required>
+<small>The button always opens this recipient's campaign tracking link.</small>
+</div>
+<div class="form-group">
+<label for="text_alignment">Content alignment</label>
+<select name="text_alignment" id="text_alignment">
+<option value="left">Left aligned</option>
+<option value="center" {% if template.presentation and template.presentation.text_alignment == 'center' %}selected{% endif %}>Centered</option>
+</select>
+</div>
+<div class="form-group">
+<label for="email_heading">Email heading <span class="muted">(optional)</span>
+</label>
+<input id="email_heading" name="email_heading" maxlength="200" value="{{ template.presentation.email_heading if template.presentation else '' }}">
+<small>Plain text, displayed above the message.</small>
+</div>
+<div class="form-group">
+<label for="content_style">Email layout</label>
+<select name="content_style" id="content_style">
+<option value="standard">Classic paragraphs</option>
+<option value="sectioned" {% if template.presentation and template.presentation.content_style == 'sectioned' %}selected{% endif %}>Headings, sections & dividers</option>
+<option value="compact" {% if template.presentation and template.presentation.content_style == 'compact' %}selected{% endif %}>Compact spacing</option>
+</select>
+</div>
+</div>
+</section>
+<section class="panel">
+<div class="step-heading">
+<span>02</span>
+<div>
+<h3>Supporting assets</h3>
+<p>Passive files only. Up to 5 MB per file.</p>
+</div>
+</div>
+<div class="form-grid">
+<div class="form-group">
+<label for="image">Email illustration <span class="muted">(optional)</span>
+</label>
+<input id="image" name="image" type="file" accept=".png,.jpg,.jpeg">
+<small>One PNG or JPEG. Images are validated and re-encoded.</small>
+</div>
+<div class="form-group">
+<label for="attachments">Attachments <span class="muted">(optional)</span>
+</label>
+<input id="attachments" name="attachments" type="file" multiple accept=".pdf,.png,.jpg,.jpeg,.docx,.txt">
+<small>Up to five PDF, PNG, JPG/JPEG, DOCX, or TXT files. Scripts, macros, archives, and active document content are rejected.</small>
+</div>
+</div>
+{% if template.assets %}
+<ul class="asset-list">
+{% for asset in template.assets %}
+<li>
+<div>
+<a href="{{ url_for('studio.asset_download', asset_id=asset.id) }}">{{ asset.filename }}</a>
+<small>{{ asset.kind }} · {{ (asset.size / 1024)|round(1) }} KB</small>
+</div>
+<label>
+<input type="checkbox" name="remove_assets" value="{{ asset.id }}"> Remove from template</label>
+</li>
+{% endfor %}
+</ul>
+{% endif %}
+</section>
+<div class="studio-actions">
+<button class="btn-secondary" name="action" value="preview" type="submit">Preview message</button>
+<button class="btn" name="action" value="save" type="submit">Save reusable template</button>
+</div>
+</div>
+<aside class="studio-sidebar">
+{% if not preview %}
+<section class="preview-shell">
+<div class="preview-shell-bar">
+<span>
+<i>
+</i>
+<i>
+</i>
+<i>
+</i>
+</span>EMAIL PREVIEW</div>
+<div class="preview-placeholder">{{ icon('mail',38) }}<h4>See your message take shape</h4>
+<p>Choose a verified sender and select Preview message to render a safe sample. The campaign preview uses each actual approved recipient.</p>
+</div>
+</section>
+{% endif %}
+{% if preview %}
+<section class="panel editor-preview">
+<h3>Sample preview</h3>
+<p class="muted">Example personalization. Save uploaded assets first; review the complete message from the campaign before sending.</p>
+<div class="preview-envelope">
+<strong>{{ preview.sender_name }}</strong> &lt;{{ preview.sender_email }}&gt;<br>
+<strong>{{ preview.subject }}</strong>
+</div>
+<iframe title="Sample email preview" sandbox srcdoc="{{ preview.html }}">
+</iframe>
+<details>
+<summary>Plain-text version</summary>
+<pre>{{ preview.text }}</pre>
+</details>
+</section>
+{% endif %}
+<section class="panel">
+<h3>Personalization</h3>
+<p>Focus the subject or message, then select a chip to insert its token.</p>
+<dl class="placeholder-list">
+<dt>
+<button type="button" class="token-chip" data-token="{% raw %}{{recipient_name}}{% endraw %}" title="Insert the approved recipient’s name">
+{% raw %}{{recipient_name}}{% endraw %}
+</button>
+</dt>
+<dd>Approved recipient’s full name</dd>
+<dt>
+<button type="button" class="token-chip" data-token="{% raw %}{{campaign_name}}{% endraw %}" title="Insert the campaign name">
+{% raw %}{{campaign_name}}{% endraw %}
+</button>
+</dt>
+<dd>The campaign’s name</dd>
+<dt>
+<button type="button" class="token-chip" data-token="{% raw %}{{tracking_url}}{% endraw %}" title="Insert the recipient’s unique tracking URL">
+{% raw %}{{tracking_url}}{% endraw %}
+</button>
+</dt>
+<dd>Unique awareness tracking link</dd>
+</dl>
+</section>
+<section class="panel safety-panel">
+<h3>Delivery guardrails</h3>
+<p>✓ Approved recipients only</p>
+<p>✓ Active, authorized campaign</p>
+<p>✓ Review the actual recipient message</p>
+<p>✓ Authenticated SMTP sender</p>
+<p>✓ No passwords, OTPs, or participant credentials</p>
+</section>
+
+</aside>
+</form>
+<script src="{{ url_for('static', filename='js/senders.js') }}" defer>
+</script>
 {% endblock %}

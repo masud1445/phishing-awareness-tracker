@@ -1,0 +1,21 @@
+{% extends 'base.html' if not public else 'public_base.html' %}
+{% from 'components/ui.html' import icon %}
+{% block title %}Request needs attention · Phishing Awareness Tracker{% endblock %}
+{% block content %}
+<div class="page-heading">
+<div>
+<span class="eyebrow">REQUEST NEEDS ATTENTION · {{ code }}</span>
+<h2>Let's get you back on track</h2>
+<p>The requested action could not be completed.</p>
+</div>
+</div>
+<section class="panel">
+<div class="guidance-icon">{{ icon('shield',28) }}</div>
+<h3>{{ 'This link is unavailable' if public else 'Review the details and try again' }}</h3>
+<div class="studio-error" role="alert" style="margin-top:22px">{{ message }}</div>
+<p>{{ 'Contact your campaign organizer if you need help accessing the awareness activity.' if public else 'Your campaign safeguards remain in place. Return to the workspace to review the information before continuing.' }}</p>
+{% if not public %}
+<a class="btn" href="{{ url_for('home') }}">Return to dashboard {{ icon('arrow',16) }}</a>
+{% endif %}
+</section>
+{% endblock %}
