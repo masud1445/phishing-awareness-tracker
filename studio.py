@@ -11,19 +11,9 @@ from template_store import apply_template, get_asset, get_template, list_templat
 from uploads import validate_upload
 from sender_accounts import synchronize_configured, selectable_accounts, require_verified
 
+from security import csrf_token, require_csrf, configure_security
+
 studio = Blueprint('studio', __name__)
-
-
-def csrf_token():
-    if 'studio_csrf' not in session:
-        session['studio_csrf'] = secrets.token_urlsafe(32)
-    return session['studio_csrf']
-
-
-def require_csrf():
-    token = session.get('studio_csrf', '')
-    if not token or not secrets.compare_digest(token, request.form.get('csrf_token', '')):
-        abort(400, 'Invalid form token. Reload the page and try again.')
 
 
 @studio.app_context_processor
@@ -123,7 +113,7 @@ def asset_download(asset_id):
 def configure_studio(app):
     import os
     from pathlib import Path
-    # Persistent local signing key; shared production instances should set SECRET_KEY.
+    # Persistent local signing key; production must explicitly set SECRET_KEY.
     key = os.getenv('SECRET_KEY')
     if not key:
         path = Path(app.instance_path) / 'session.key'
@@ -138,6 +128,7 @@ def configure_studio(app):
     app.config.update(SECRET_KEY=key, MAX_CONTENT_LENGTH=32 * 1024 * 1024,
                       SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE='Lax',
                       SESSION_COOKIE_SECURE=os.getenv('SESSION_COOKIE_SECURE', '0') == '1')
+    configure_security(app)
     app.register_blueprint(studio)
     from sender_views import senders
     app.register_blueprint(senders)

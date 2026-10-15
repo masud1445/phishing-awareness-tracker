@@ -43,7 +43,7 @@
 <strong>{{ rendered.subject }}</strong>
 </div>
 </div>
-<iframe class="campaign-preview-frame" title="Exact campaign email HTML preview" sandbox srcdoc="{{ rendered.html }}">
+<iframe class="campaign-preview-frame" title="Exact campaign email HTML preview" sandbox="allow-same-origin" srcdoc="{{ rendered.html }}">
 </iframe>
 <details>
 <summary>Plain-text email alternative</summary>
@@ -61,8 +61,8 @@
 </ul>
 {% endif %}
 <form method="post" action="{{ url_for('send_recipient_email', campaign_id=campaign.id, recipient_id=selected.id) }}" class="email-send-control">
-{% if campaign.email_template %}
 <input type="hidden" name="csrf_token" value="{{ studio_csrf() }}">
+{% if campaign.email_template %}
 <label>
 <input type="checkbox" name="authorized" required> I reviewed this message and confirm authorized delivery to this approved recipient.</label>
 {% else %}

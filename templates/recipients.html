@@ -46,6 +46,7 @@
 <span class="badge approved">{{ icon('check',14) }} APPROVED</span>
 {% else %}
 <form method="post" action="{{ url_for('approve_recipient',campaign_id=campaign.id,recipient_id=recipient.id) }}">
+<input type="hidden" name="csrf_token" value="{{ studio_csrf() }}">
 <button class="approve-btn" type="submit">{{ icon('check',14) }} Approve recipient</button>
 </form>
 {% endif %}
@@ -73,6 +74,7 @@
 {% if campaign.status == 'draft' %}
 <p>Launch enables this campaign for delivery and tracking. It does not send any messages.</p>
 <form method="post" action="{{ url_for('launch_campaign',campaign_id=campaign.id) }}">
+<input type="hidden" name="csrf_token" value="{{ studio_csrf() }}">
 <button class="btn" type="submit">Launch Campaign {{ icon('arrow',16) }}</button>
 </form>
 {% else %}

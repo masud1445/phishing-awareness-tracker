@@ -1,3 +1,4 @@
+from conftest import post, login_operator
 """Account integration tests use isolated SQL and a non-network SMTP double."""
 from contextlib import contextmanager
 import os
@@ -80,7 +81,7 @@ def test_edit_blank_retains_ciphertext_and_requires_reverification(db_client, tr
     identity = create(True)
     accounts.account_action(identity, 'default')
     old = accounts.get_account(identity, private=True)
-    response = client.post(f'/senders/{identity}/edit', data=values(display_name='Updated team') | {'csrf_token': csrf(client), 'smtp_password': ''})
+    response = post(client, f'/senders/{identity}/edit', data=values(display_name='Updated team') | {'csrf_token': csrf(client), 'smtp_password': ''})
     assert response.status_code == 302
     row = accounts.get_account(identity, private=True)
     assert row['encrypted_password'] == old['encrypted_password']
@@ -130,12 +131,12 @@ def test_disabled_deleted_block_delivery_and_keep_history(campaign, transport, a
     template = validate_template(template_form() | {'sender_account_id': identity, 'sender_email': 'training@sender.example'})
     template_id = template_store.save_template(template, [])
     template_store.apply_template(1, template_store.get_template(template_id))
-    client.post('/campaigns/1/launch'); client.get('/campaigns/1/email-preview')
+    post(client, '/campaigns/1/launch'); client.get('/campaigns/1/email-preview')
     accounts.account_action(identity, action)
     response = client.get('/campaigns/1/email-preview')
     assert response.status_code == 200 and b'training@sender.example' in response.data
     assert b'history is preserved' in response.data
-    response = client.post('/campaigns/1/recipients/1/send-email', data={'csrf_token': csrf(client), 'authorized': 'on'})
+    response = post(client, '/campaigns/1/recipients/1/send-email', data={'csrf_token': csrf(client), 'authorized': 'on'})
     assert response.status_code == 400 and not transport.messages
     assert read(factory, 'SELECT sent_at FROM recipients WHERE id=1')['sent_at'] is None
     assert template_store.campaign_template(1)['sender_email'] == 'training@sender.example'
@@ -152,12 +153,12 @@ def test_preview_and_delivery_selected_identity_consistent(campaign, transport):
     identity = create(True)
     token = csrf(client)
     form = template_form() | {'sender_account_id': identity, 'sender_email': 'training@sender.example', 'csrf_token': token}
-    assert client.post('/templates/new', data=form).status_code == 302
-    assert client.post('/campaigns/1/studio', data={'template_id': 1, 'authorized': 'on', 'csrf_token': token}).status_code == 302
-    client.post('/campaigns/1/launch')
+    assert post(client, '/templates/new', data=form).status_code == 302
+    assert post(client, '/campaigns/1/studio', data={'template_id': 1, 'authorized': 'on', 'csrf_token': token}).status_code == 302
+    post(client, '/campaigns/1/launch')
     response = client.get('/campaigns/1/email-preview')
     assert b'training@sender.example' in response.data
-    assert client.post('/campaigns/1/recipients/1/send-email', data={'csrf_token': token, 'authorized': 'on'}).status_code == 302
+    assert post(client, '/campaigns/1/recipients/1/send-email', data={'csrf_token': token, 'authorized': 'on'}).status_code == 302
     message, envelope = transport.messages[0]
     assert message['From'] == 'Awareness Team <training@sender.example>'
     assert envelope['from_addr'] == 'training@sender.example'
@@ -171,7 +172,7 @@ def test_campaign_can_override_template_sender(campaign, transport):
     identity = create(True)
     legacy = validate_template(template_form())
     template_store.save_template(legacy, [])
-    response = client.post('/campaigns/1/studio', data={'template_id': 1, 'sender_account_id': identity, 'authorized': 'on', 'csrf_token': csrf(client)})
+    response = post(client, '/campaigns/1/studio', data={'template_id': 1, 'sender_account_id': identity, 'authorized': 'on', 'csrf_token': csrf(client)})
     assert response.status_code == 302
     assert template_store.campaign_template(1)['sender_account_id'] == identity
     assert template_store.campaign_template(1)['sender_email'] == 'training@sender.example'
@@ -182,9 +183,9 @@ def test_account_changes_invalidate_previous_review(campaign, transport):
     identity = create(True)
     template_store.save_template(validate_template(template_form() | {'sender_account_id': identity, 'sender_email': 'training@sender.example'}), [])
     template_store.apply_template(1, template_store.get_template(1))
-    client.post('/campaigns/1/launch'); client.get('/campaigns/1/email-preview')
+    post(client, '/campaigns/1/launch'); client.get('/campaigns/1/email-preview')
     accounts.verify_account(identity)
-    response = client.post('/campaigns/1/recipients/1/send-email', data={'csrf_token': csrf(client), 'authorized': 'on'})
+    response = post(client, '/campaigns/1/recipients/1/send-email', data={'csrf_token': csrf(client), 'authorized': 'on'})
     assert response.status_code == 400 and b'Preview' in response.data
     assert not transport.messages
 
@@ -220,7 +221,7 @@ def test_failed_retest_revokes_verified_state_without_exposing_response(db_clien
         yield
     monkeypatch.setattr(accounts, 'open_account_connection', failing)
     client, _ = db_client
-    response = client.post(f'/senders/{identity}/test', data={'csrf_token': csrf(client)})
+    response = post(client, f'/senders/{identity}/test', data={'csrf_token': csrf(client)})
     assert response.status_code == 400 and b'isolated-test-password' not in response.data
     assert not accounts.get_account(identity)['verified']
 
@@ -245,12 +246,12 @@ def test_private_smtp_destination_rejected(monkeypatch, address):
 def test_management_csrf_and_validation_never_echo_password(db_client):
     client, _ = db_client
     assert client.post('/senders/new', data=values()).status_code == 400
-    response = client.post('/senders/new', data=values(email='invalid') | {'smtp_password':'isolated-test-password','csrf_token':csrf(client)})
+    response = post(client, '/senders/new', data=values(email='invalid') | {'smtp_password':'isolated-test-password','csrf_token':csrf(client)})
     assert b'isolated-test-password' not in response.data
     identity = create()
     assert client.post(f'/senders/{identity}/delete').status_code == 400
     assert accounts.get_account(identity)['deleted'] == 0
-    assert client.post(f'/senders/{identity}/delete', data={'csrf_token':csrf(client)}).status_code == 302
+    assert post(client, f'/senders/{identity}/delete', data={'csrf_token':csrf(client)}).status_code == 302
     assert client.get(f'/senders/{identity}/edit').status_code == 404
 
 
@@ -318,15 +319,15 @@ def test_account_endpoints_default_disable_enable_and_delete(db_client, transpor
     client, _ = db_client
     identity = create()
     token = csrf(client)
-    assert client.post(f'/senders/{identity}/test',data={'csrf_token':token}).status_code == 302
-    assert client.post(f'/senders/{identity}/default',data={'csrf_token':token}).status_code == 302
+    assert post(client, f'/senders/{identity}/test',data={'csrf_token':token}).status_code == 302
+    assert post(client, f'/senders/{identity}/default',data={'csrf_token':token}).status_code == 302
     assert accounts.list_accounts()[-1]['is_default']
-    assert client.post(f'/senders/{identity}/disable',data={'csrf_token':token}).status_code == 302
+    assert post(client, f'/senders/{identity}/disable',data={'csrf_token':token}).status_code == 302
     assert b'>Delete</button>' in client.get('/senders').data
-    assert client.post(f'/senders/{identity}/enable',data={'csrf_token':token}).status_code == 302
+    assert post(client, f'/senders/{identity}/enable',data={'csrf_token':token}).status_code == 302
     assert not accounts.get_account(identity)['verified']
-    assert client.post(f'/senders/{identity}/default',data={'csrf_token':token}).status_code == 400
-    assert client.post(f'/senders/{identity}/delete',data={'csrf_token':token}).status_code == 302
+    assert post(client, f'/senders/{identity}/default',data={'csrf_token':token}).status_code == 400
+    assert post(client, f'/senders/{identity}/delete',data={'csrf_token':token}).status_code == 302
 
 
 @pytest.mark.parametrize('change', ['approved', 'status', 'authorized'])
@@ -355,9 +356,9 @@ def test_old_studio_snapshot_without_sender_id_still_previews_and_delivers(campa
     connection.close()
     FakeSMTP.messages = []; FakeSMTP.events = []
     monkeypatch.setattr(email_service.smtplib,'SMTP',FakeSMTP)
-    client.post('/campaigns/1/launch')
+    post(client, '/campaigns/1/launch')
     assert client.get('/campaigns/1/email-preview').status_code == 200
-    response = client.post('/campaigns/1/recipients/1/send-email',data={'csrf_token':csrf(client),'authorized':'on'})
+    response = post(client, '/campaigns/1/recipients/1/send-email',data={'csrf_token':csrf(client),'authorized':'on'})
     assert response.status_code == 302 and len(FakeSMTP.messages) == 1
     assert 'awareness@example.com' in FakeSMTP.messages[0]['From']
 
@@ -392,7 +393,7 @@ def test_delivery_locks_selected_sender_against_disable(campaign, transport, mon
     identity = create(True)
     template_store.save_template(validate_template(template_form() | {'sender_account_id':identity,'sender_email':'training@sender.example'}),[])
     template_store.apply_template(1,template_store.get_template(1))
-    client.post('/campaigns/1/launch'); client.get('/campaigns/1/email-preview')
+    post(client, '/campaigns/1/launch'); client.get('/campaigns/1/email-preview')
     token = csrf(client)
     sending = Event(); release = Event(); disabling = Event(); disabled = Event()
     def send(message, **kwargs):

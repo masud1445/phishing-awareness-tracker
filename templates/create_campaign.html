@@ -19,6 +19,7 @@
 </div>
 </div>
 <form method="POST" action="{{ url_for('create_campaign') }}">
+<input type="hidden" name="csrf_token" value="{{ studio_csrf() }}">
 
             <div class="form-grid">
 

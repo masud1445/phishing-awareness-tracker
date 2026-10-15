@@ -50,7 +50,7 @@ The named MySQL test database must be empty and separate from application data. 
 For optional automated browser review, install `puppeteer-core` and `axe-core` in an external tools directory and set `NODE_PATH` to its `node_modules`. Set `CHROME_PATH` to a Chromium/Chrome executable if needed. Then run:
 
 ```sh
-node scripts/verify_ui.cjs
+UI_OPERATOR_USERNAME=review-operator UI_OPERATOR_PASSWORD=isolated-browser-review-password node scripts/verify_ui.cjs
 ```
 
 The script checks 1920, 1440, 1280, 768, and 390 pixel widths; saves screenshots; checks browser JavaScript errors, keyboard navigation, token/format insertion, search empty states, reduced motion, and WCAG A/AA rules through axe. `UI_BASE_URL` selects the server, `UI_SCREENSHOTS` selects the output directory, and optional `UI_CAMPAIGN_ID` / `UI_TRACKING_TOKEN` enable existing campaign/participant pages. Use a review instance with delivery disabled.
@@ -75,6 +75,8 @@ No scheduling, bulk sends, archive actions, OAuth flow, or other unsupported fea
 | `scripts/verify_ui.cjs`, `tests/browser_review_server.py` | Reproducible browser checks and isolated populated visual-review fixtures |
 | `README.md`, `docs/mysql-setup.md`, this guide | Setup, migration, design decisions, and review instructions |
 
-Validation completed: **188 automated tests passed with the isolated test adapter and 188 passed with MySQL**. Automated browser review covered 18 pages at 1920/1440/1280/768/390 pixels (90 page/viewport combinations), with no page overflow, browser JavaScript exceptions, or checked WCAG A/AA violations. Keyboard navigation, token/format insertion, filters, and reduced motion passed. A separate console check covered the working administrative/campaign screens. Secret scanning used 27 detection plugins plus exact comparisons against private environment credentials; no findings. Populated screenshots come solely from explicitly labeled isolated test fixtures, while the normal review application continues displaying real MySQL application data.
+Validation completed: **274 automated tests passed with the isolated test adapter and 274 passed with MySQL**. Automated browser review covered 18 pages at 1920/1440/1280/768/390 pixels (90 page/viewport combinations), with no page overflow, browser JavaScript exceptions, or checked WCAG A/AA violations. Keyboard navigation, token/format insertion, filters, and reduced motion passed. A separate console check covered the working administrative/campaign screens. Secret scanning used 27 detection plugins plus exact comparisons against private environment credentials; no real secrets were found (dummy test values and the token alphabet were reviewed as false positives). Populated screenshots come solely from explicitly labeled isolated test fixtures, while the normal review application continues displaying real MySQL application data.
 
 Visual acceptance remains subject to the user's review. The initial visual-review handoff did not include a commit, push, or merge; `main` was not modified.
+
+Administrative access now requires operator sign-in. The approved design is preserved with a sign-out action and a matching login page. See [final security review](pr-security-review.md) and [deployment requirements](admin-security.md).

@@ -1,0 +1,47 @@
+name: Tests
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  isolated:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - run: pip install -r requirements.lock
+      - run: python -m pytest -q
+  mysql:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_DATABASE: awareness_ci_test
+          MYSQL_USER: awareness_ci
+          MYSQL_PASSWORD: isolated-ci-placeholder
+          MYSQL_ROOT_PASSWORD: isolated-ci-root-placeholder
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=12
+    env:
+      TEST_MYSQL_DATABASE: awareness_ci_test
+      DB_HOST: 127.0.0.1
+      DB_PORT: '3306'
+      DB_USER: awareness_ci
+      DB_PASSWORD: isolated-ci-placeholder
+      DB_NAME: unused_application_database
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - run: pip install -r requirements.lock
+      - run: python -m pytest -q

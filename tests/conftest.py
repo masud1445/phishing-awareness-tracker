@@ -1,4 +1,5 @@
 import os
+import smtplib
 from pathlib import Path
 
 import pytest
@@ -10,7 +11,52 @@ import template_store
 import sender_accounts
 import sender_views
 from cryptography.fernet import Fernet
+from werkzeug.security import generate_password_hash
 from sqlite_adapter import SQLiteConnection
+
+TEST_OPERATOR_PASSWORD = "isolated-operator-test-password"
+TEST_OPERATOR_HASH = generate_password_hash(TEST_OPERATOR_PASSWORD)
+
+
+@pytest.fixture(autouse=True)
+def block_real_smtp(monkeypatch):
+    def blocked(*args, **kwargs):
+        pytest.fail("Real SMTP connections are forbidden in automated tests")
+    monkeypatch.setattr(smtplib.SMTP, "connect", blocked)
+    monkeypatch.setattr(smtplib.SMTP_SSL, "connect", blocked)
+
+
+@pytest.fixture(autouse=True)
+def operator_configuration(monkeypatch):
+    monkeypatch.setitem(app_module.app.config, "ADMIN_USERNAME", "test-operator")
+    monkeypatch.setitem(app_module.app.config, "ADMIN_PASSWORD_HASH", TEST_OPERATOR_HASH)
+    monkeypatch.setitem(app_module.app.config, "APP_ENV", "local")
+    monkeypatch.setitem(app_module.app.config, "SECRET_KEY", "isolated-test-signing-key")
+    monkeypatch.setitem(app_module.app.config, "SESSION_COOKIE_SECURE", False)
+    app_module.app.extensions["operator_login_throttle"]["attempts"].clear()
+    app_module.app.extensions["operator_sessions"]["active"].clear()
+
+
+def login_operator(client):
+    client.get("/operator/login")
+    with client.session_transaction() as state:
+        token = state["studio_csrf"]
+    response = client.post("/operator/login", data={"csrf_token": token,"username":"test-operator","password":TEST_OPERATOR_PASSWORD})
+    assert response.status_code == 302
+    return client
+
+
+def post(client, url, data=None, **kwargs):
+    """Send a legitimate regression request; negative security tests use raw POST."""
+    if isinstance(data, (bytes, str)):
+        with client.session_transaction() as state:
+            token = state["studio_csrf"]
+        kwargs["headers"] = dict(kwargs.get("headers", {})) | {"X-CSRF-Token": token}
+    else:
+        with client.session_transaction() as state:
+            token = state["studio_csrf"]
+        data = {"csrf_token":token} | dict(data or {})
+    return client.post(url, data=data, **kwargs)
 
 
 @pytest.fixture
@@ -52,7 +98,7 @@ def db_client(tmp_path, monkeypatch):
     monkeypatch.setenv('BASE_URL', 'https://awareness.example.com')
     monkeypatch.setitem(app_module.app.config, 'TESTING', True)
     monkeypatch.setitem(app_module.app.config, 'SECRET_KEY', 'isolated-test-key')
-    client = app_module.app.test_client()
+    client = login_operator(app_module.app.test_client())
     yield client, factory
     if mysql:
         connection = factory()
@@ -67,11 +113,11 @@ def db_client(tmp_path, monkeypatch):
 @pytest.fixture
 def campaign(db_client):
     client, factory = db_client
-    response = client.post('/campaigns/new', data={'campaign_name': 'Quarterly awareness', 'purpose': 'Training',
+    response = post(client, '/campaigns/new', data={'campaign_name': 'Quarterly awareness', 'purpose': 'Training',
                            'campaign_template': 'basic-link', 'start_date': '2026-10-12', 'authorized': 'on'})
     assert response.status_code == 302
-    client.post('/campaigns/1/recipients/new', data={'full_name': 'Alex <Morgan>', 'email': 'alex@example.com', 'department': 'Finance'})
-    client.post('/campaigns/1/recipients/1/approve')
+    post(client, '/campaigns/1/recipients/new', data={'full_name': 'Alex <Morgan>', 'email': 'alex@example.com', 'department': 'Finance'})
+    post(client, '/campaigns/1/recipients/1/approve')
     return client, factory
 
 

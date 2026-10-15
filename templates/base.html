@@ -55,7 +55,8 @@
 </div>
 <div class="header-actions">
 <span class="header-safety">{{ icon('shield',16) }} Authorized use only</span>
-<span class="operator-avatar" title="Administrative workspace">PA</span>
+<span class="operator-avatar" title="Authenticated operator">PA</span>
+<form method="post" action="{{ url_for('operator.logout') }}"><input type="hidden" name="csrf_token" value="{{ studio_csrf() }}"><button class="btn-quiet" type="submit">Sign out</button></form>
 </div>
 </header>
 <main id="main-content" class="app-content" tabindex="-1">

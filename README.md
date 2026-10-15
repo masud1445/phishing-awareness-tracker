@@ -116,3 +116,7 @@ The fixture refuses a populated schema, initializes tables, and removes only its
 ## Professional workspace UI
 
 See [the redesign and browser-review guide](docs/ui-redesign.md) for the shared design system, responsive screens, safe email-formatting controls, and reproducible visual/accessibility checks. Run `python -m flask --app app init-db` when upgrading to add the nullable presentation settings column without resetting existing data.
+
+### Administrative sign-in
+
+Administrative routes now require an operator login. Follow [operator setup and production requirements](docs/admin-security.md) to generate an environment-configured password hash before opening `/operator/login`. The public awareness landing page remains available without login. Production uses a single application worker behind HTTPS; see the linked guide before deployment.

@@ -1,3 +1,4 @@
+from conftest import post, login_operator
 import io
 import smtplib
 
@@ -13,11 +14,11 @@ from test_uploads import image_bytes
 
 def save(client, **overrides):
     values = template_form() | {'csrf_token': csrf(client)} | overrides
-    return client.post('/templates/new', data=values, content_type='multipart/form-data')
+    return post(client, '/templates/new', data=values, content_type='multipart/form-data')
 
 
 def apply(client, template_id=1):
-    return client.post('/campaigns/1/studio', data={'csrf_token': csrf(client), 'template_id': str(template_id), 'authorized': 'on'})
+    return post(client, '/campaigns/1/studio', data={'csrf_token': csrf(client), 'template_id': str(template_id), 'authorized': 'on'})
 
 
 def test_library_create_edit_and_sample_preview(db_client):
@@ -26,9 +27,9 @@ def test_library_create_edit_and_sample_preview(db_client):
     assert save(client).status_code == 302
     assert b'Quarterly reminder' in client.get('/templates').data
     values = template_form() | {'csrf_token': csrf(client), 'subject': 'Updated subject'}
-    assert client.post('/templates/1/edit', data=values).status_code == 302
+    assert post(client, '/templates/1/edit', data=values).status_code == 302
     assert template_store.get_template(1)['subject'] == 'Updated subject'
-    response = client.post('/templates/1/edit', data=values | {'action': 'preview'})
+    response = post(client, '/templates/1/edit', data=values | {'action': 'preview'})
     assert response.status_code == 200
     assert b'Sample preview' in response.data
     assert b'PREVIEW-ONLY' in response.data
@@ -85,10 +86,10 @@ def test_attachment_count_and_image_replacement(db_client):
     assert template_store.list_templates() == []
     assert save(client, image=(io.BytesIO(image_bytes()), 'first.png')).status_code == 302
     values = template_form() | {'csrf_token': csrf(client), 'image': (io.BytesIO(image_bytes()), 'second.png')}
-    assert b'at most one illustration' in client.post('/templates/1/edit', data=values).data
+    assert b'at most one illustration' in post(client, '/templates/1/edit', data=values).data
     values['image'] = (io.BytesIO(image_bytes()), 'second.png')
     values['remove_assets'] = '1'
-    assert client.post('/templates/1/edit', data=values).status_code == 302
+    assert post(client, '/templates/1/edit', data=values).status_code == 302
     assert [a['filename'] for a in template_store.get_template(1)['assets']] == ['second.png']
 
 
@@ -98,7 +99,7 @@ def test_campaign_snapshot_survives_library_edit_and_asset_removal(campaign):
     assert apply(client).status_code == 302
     original = template_store.campaign_template(1)
     values = template_form() | {'csrf_token': csrf(client), 'subject': 'New subject', 'remove_assets': '1'}
-    assert client.post('/templates/1/edit', data=values).status_code == 302
+    assert post(client, '/templates/1/edit', data=values).status_code == 302
     assert template_store.campaign_template(1) == original
     assert template_store.get_template(1)['assets'] == []
     assert template_store.get_asset(original['assets'][0]['id'])['data'] == b'original'
@@ -111,11 +112,11 @@ def test_apply_requires_authorization_and_valid_campaign(campaign):
     client, factory = campaign
     save(client)
     assert client.post('/campaigns/1/studio', data={'template_id': '1'}).status_code == 400
-    response = client.post('/campaigns/1/studio', data={'csrf_token': csrf(client), 'template_id': '1'})
+    response = post(client, '/campaigns/1/studio', data={'csrf_token': csrf(client), 'template_id': '1'})
     assert b'Authorization confirmation' in response.data
     assert template_store.campaign_template(1) is None
     assert client.get('/campaigns/999/studio').status_code == 404
-    response = client.post('/campaigns/1/studio', data={'csrf_token': csrf(client), 'authorized': 'on', 'template_id': '999'})
+    response = post(client, '/campaigns/1/studio', data={'csrf_token': csrf(client), 'authorized': 'on', 'template_id': '999'})
     assert b'Choose an existing template' in response.data
 
 
@@ -126,12 +127,12 @@ def test_send_requires_review_confirmation_and_active_campaign(campaign, monkeyp
     sent = []
     monkeypatch.setattr(app_module, 'send_campaign_email', lambda *args: sent.append(args))
     data = {'csrf_token': csrf(client), 'authorized': 'on'}
-    assert client.post('/campaigns/1/recipients/1/send-email', data=data).status_code == 400
+    assert post(client, '/campaigns/1/recipients/1/send-email', data=data).status_code == 400
     client.get('/campaigns/1/email-preview')
-    assert client.post('/campaigns/1/recipients/1/send-email', data={'csrf_token': csrf(client)}).status_code == 400
+    assert post(client, '/campaigns/1/recipients/1/send-email', data={'csrf_token': csrf(client)}).status_code == 400
     # Real delivery service validates activity even when route has a reviewed email.
     monkeypatch.setattr(app_module, 'send_campaign_email', email_service.send_campaign_email)
-    assert client.post('/campaigns/1/recipients/1/send-email', data=data).status_code == 400
+    assert post(client, '/campaigns/1/recipients/1/send-email', data=data).status_code == 400
     assert read_one(factory, 'SELECT sent_at FROM recipients WHERE id=1')['sent_at'] is None
     assert sent == []
 
@@ -161,7 +162,7 @@ def test_preview_matches_mime_delivery_and_preserves_scoring(campaign, monkeypat
     client, factory = campaign
     save(client, image=(io.BytesIO(image_bytes()), 'image.png'), attachments=(io.BytesIO(b'awareness guide'), 'guide.txt'))
     apply(client)
-    client.post('/campaigns/1/launch')
+    post(client, '/campaigns/1/launch')
     client.get('/campaigns/1/email-preview')
     from template_content import render_email
     recipient = read_one(factory, 'SELECT * FROM recipients WHERE id=1')
@@ -170,7 +171,7 @@ def test_preview_matches_mime_delivery_and_preserves_scoring(campaign, monkeypat
     expected = render_email(template, campaign_row, recipient, email_service.build_tracking_url(recipient['tracking_token']), 'cid:campaign-illustration')
     FakeSMTP.messages = []; FakeSMTP.events = []
     monkeypatch.setattr(email_service.smtplib, 'SMTP', FakeSMTP)
-    response = client.post('/campaigns/1/recipients/1/send-email', data={'csrf_token': csrf(client), 'authorized': 'on'})
+    response = post(client, '/campaigns/1/recipients/1/send-email', data={'csrf_token': csrf(client), 'authorized': 'on'})
     assert response.status_code == 302
     assert len(FakeSMTP.messages) == 1
     message = FakeSMTP.messages[0]
@@ -191,7 +192,7 @@ def test_preview_matches_mime_delivery_and_preserves_scoring(campaign, monkeypat
     # Resending does not erase clicked status or the original sent_at.
     first = read_one(factory, 'SELECT sent_at FROM recipients WHERE id=1')['sent_at']
     client.get('/campaigns/1/email-preview')
-    assert client.post('/campaigns/1/recipients/1/send-email', data={'csrf_token': csrf(client), 'authorized': 'on'}).status_code == 302
+    assert post(client, '/campaigns/1/recipients/1/send-email', data={'csrf_token': csrf(client), 'authorized': 'on'}).status_code == 302
     row = read_one(factory, 'SELECT status, sent_at FROM recipients WHERE id=1')
     assert row['status'] == 'clicked' and row['sent_at'] == first
 
@@ -200,22 +201,22 @@ def test_changed_snapshot_invalidates_review(campaign, monkeypatch):
     client, factory = campaign
     save(client)
     apply(client)
-    client.post('/campaigns/1/launch')
+    post(client, '/campaigns/1/launch')
     client.get('/campaigns/1/email-preview')
     save(client, subject='Different content')
     apply(client, 2)
     sent = []
     monkeypatch.setattr(app_module, 'send_campaign_email', lambda *args: sent.append(args))
-    assert client.post('/campaigns/1/recipients/1/send-email', data={'csrf_token': csrf(client), 'authorized': 'on'}).status_code == 400
+    assert post(client, '/campaigns/1/recipients/1/send-email', data={'csrf_token': csrf(client), 'authorized': 'on'}).status_code == 400
     assert sent == []
 
 
 def test_preview_selects_only_approved_recipients(campaign):
     client, factory = campaign
     save(client); apply(client)
-    client.post('/campaigns/1/recipients/new', data={'full_name': 'Unapproved User', 'email': 'other@example.com'})
+    post(client, '/campaigns/1/recipients/new', data={'full_name': 'Unapproved User', 'email': 'other@example.com'})
     assert client.get('/campaigns/1/email-preview?recipient_id=2').status_code == 404
-    assert client.post('/campaigns/1/recipients/2/send-email').status_code == 403
+    assert post(client, '/campaigns/1/recipients/2/send-email').status_code == 403
     response = client.get('/campaigns/1/email-preview')
     assert b'Unapproved User' not in response.data
     assert b'sandbox' in response.data
@@ -228,10 +229,10 @@ def test_legacy_campaign_preview_and_delivery(campaign, monkeypatch):
     response = client.get('/campaigns/1/email-preview')
     assert response.status_code == 200
     assert b'Security Awareness: Review Required Information' in response.data
-    client.post('/campaigns/1/launch')
+    post(client, '/campaigns/1/launch')
     FakeSMTP.messages = []; FakeSMTP.events = []
     monkeypatch.setattr(email_service.smtplib, 'SMTP', FakeSMTP)
-    assert client.post('/campaigns/1/recipients/1/send-email').status_code == 302
+    assert post(client, '/campaigns/1/recipients/1/send-email').status_code == 302
     assert FakeSMTP.messages[0]['Subject'] == 'Security Awareness: Review Required Information'
     assert b'No password, OTP' in client.get('/t/' + read_one(factory, 'SELECT tracking_token FROM recipients WHERE id=1')['tracking_token']).data
     assert client.get('/campaigns/1/results').status_code == 200
@@ -240,12 +241,12 @@ def test_legacy_campaign_preview_and_delivery(campaign, monkeypatch):
 
 def test_smtp_failure_does_not_update_delivery(campaign, monkeypatch):
     client, factory = campaign
-    client.post('/campaigns/1/launch')
+    post(client, '/campaigns/1/launch')
     class BrokenSMTP(FakeSMTP):
         def login(self, *args):
             raise smtplib.SMTPAuthenticationError(535, b'provider detail')
     monkeypatch.setattr(email_service.smtplib, 'SMTP', BrokenSMTP)
-    response = client.post('/campaigns/1/recipients/1/send-email')
+    response = post(client, '/campaigns/1/recipients/1/send-email')
     assert response.status_code == 400
     assert b'provider detail' not in response.data
     assert read_one(factory, 'SELECT sent_at FROM recipients WHERE id=1')['sent_at'] is None
@@ -256,14 +257,14 @@ def test_body_and_sender_rejections_do_not_change_existing_template(db_client):
     save(client)
     before = template_store.get_template(1)
     values = template_form() | {'csrf_token': csrf(client), 'subject': 'Injected\nBcc: other@example.com'}
-    response = client.post('/templates/1/edit', data=values)
+    response = post(client, '/templates/1/edit', data=values)
     assert b'single line' in response.data
     assert template_store.get_template(1) == before
 
 
 def test_request_size_limit(db_client):
     client, factory = db_client
-    response = client.post('/templates/new', data=b'x' * (32 * 1024 * 1024 + 1), content_type='application/octet-stream')
+    response = post(client, '/templates/new', data=b'x' * (32 * 1024 * 1024 + 1), content_type='application/octet-stream')
     assert response.status_code == 413
 
 
@@ -278,13 +279,13 @@ def test_preview_html_is_the_content_sent(campaign, monkeypatch):
     client, factory = campaign
     save(client, image=(io.BytesIO(image_bytes()), 'illustration.png'))
     apply(client)
-    client.post('/campaigns/1/launch')
+    post(client, '/campaigns/1/launch')
     response = client.get('/campaigns/1/email-preview')
     parser = PreviewParser(); parser.feed(response.get_data(as_text=True))
     assert parser.content
     FakeSMTP.messages = []; FakeSMTP.events = []
     monkeypatch.setattr(email_service.smtplib, 'SMTP', FakeSMTP)
-    assert client.post('/campaigns/1/recipients/1/send-email', data={'csrf_token': csrf(client), 'authorized': 'on'}).status_code == 302
+    assert post(client, '/campaigns/1/recipients/1/send-email', data={'csrf_token': csrf(client), 'authorized': 'on'}).status_code == 302
     html = FakeSMTP.messages[0].get_body(preferencelist=('html',)).get_content().rstrip()
     # Browser preview loads the same image by internal asset ID; MIME uses its CID.
     assert parser.content.replace('/template-assets/1', 'cid:campaign-illustration') == html
@@ -294,7 +295,7 @@ def test_archived_illustration_stays_inline_in_existing_campaign(campaign):
     client, factory = campaign
     save(client, image=(io.BytesIO(image_bytes()), 'illustration.png'))
     apply(client)
-    assert client.post('/templates/1/edit', data=template_form() | {'csrf_token': csrf(client), 'remove_assets': '1'}).status_code == 302
+    assert post(client, '/templates/1/edit', data=template_form() | {'csrf_token': csrf(client), 'remove_assets': '1'}).status_code == 302
     assert template_store.get_template(1)['assets'] == []
     assert template_store.get_asset(1)['kind'] == 'image'
     assert client.get('/template-assets/1').headers['Content-Disposition'].startswith('inline')
@@ -308,11 +309,11 @@ def test_archived_illustration_stays_inline_in_existing_campaign(campaign):
 def test_template_reuse_for_different_campaigns(campaign):
     client, factory = campaign
     save(client); apply(client)
-    assert client.post('/campaigns/new', data={'campaign_name': 'Second campaign', 'campaign_template': 'security-notice',
+    assert post(client, '/campaigns/new', data={'campaign_name': 'Second campaign', 'campaign_template': 'security-notice',
                                              'start_date': '2026-10-13', 'authorized': 'on'}).status_code == 302
-    client.post('/campaigns/2/recipients/new', data={'full_name': 'Sam User', 'email': 'sam@example.com'})
-    client.post('/campaigns/2/recipients/2/approve')
-    assert client.post('/campaigns/2/studio', data={'csrf_token': csrf(client), 'template_id': '1', 'authorized': 'on'}).status_code == 302
+    post(client, '/campaigns/2/recipients/new', data={'full_name': 'Sam User', 'email': 'sam@example.com'})
+    post(client, '/campaigns/2/recipients/2/approve')
+    assert post(client, '/campaigns/2/studio', data={'csrf_token': csrf(client), 'template_id': '1', 'authorized': 'on'}).status_code == 302
     first = client.get('/campaigns/1/email-preview').data
     second = client.get('/campaigns/2/email-preview').data
     assert b'Review Quarterly awareness' in first
@@ -324,14 +325,14 @@ def test_template_reuse_for_different_campaigns(campaign):
 def test_integrity_failure_blocks_send_without_marking_sent(campaign, monkeypatch):
     client, factory = campaign
     save(client, attachments=(io.BytesIO(b'original'), 'guide.txt'))
-    apply(client); client.post('/campaigns/1/launch'); client.get('/campaigns/1/email-preview')
+    apply(client); post(client, '/campaigns/1/launch'); client.get('/campaigns/1/email-preview')
     connection = factory()
     with connection.cursor() as cursor:
         cursor.execute('UPDATE template_assets SET data=%s WHERE id=1', (b'tampered',))
     connection.close()
     FakeSMTP.messages = []; FakeSMTP.events = []
     monkeypatch.setattr(email_service.smtplib, 'SMTP', FakeSMTP)
-    response = client.post('/campaigns/1/recipients/1/send-email', data={'csrf_token': csrf(client), 'authorized': 'on'})
+    response = post(client, '/campaigns/1/recipients/1/send-email', data={'csrf_token': csrf(client), 'authorized': 'on'})
     assert response.status_code == 400
     assert b'asset has changed' in response.data
     assert FakeSMTP.messages == []
@@ -341,11 +342,11 @@ def test_integrity_failure_blocks_send_without_marking_sent(campaign, monkeypatc
 def test_authenticated_identity_removal_blocks_delivery(campaign, monkeypatch):
     client, factory = campaign
     save(client, sender_email='training@example.com'); apply(client)
-    client.post('/campaigns/1/launch'); client.get('/campaigns/1/email-preview')
+    post(client, '/campaigns/1/launch'); client.get('/campaigns/1/email-preview')
     monkeypatch.setenv('SMTP_ALLOWED_FROM_EMAILS', '')
     FakeSMTP.messages = []; FakeSMTP.events = []
     monkeypatch.setattr(email_service.smtplib, 'SMTP', FakeSMTP)
-    response = client.post('/campaigns/1/recipients/1/send-email', data={'csrf_token': csrf(client), 'authorized': 'on'})
+    response = post(client, '/campaigns/1/recipients/1/send-email', data={'csrf_token': csrf(client), 'authorized': 'on'})
     assert response.status_code == 400
     assert FakeSMTP.messages == []
 
@@ -374,15 +375,15 @@ def test_schema_setup_repeatability_preserves_existing_campaign(campaign, monkey
 
 def test_missing_smtp_credentials_and_unauthorized_campaign_fail_closed(campaign, monkeypatch):
     client, factory = campaign
-    client.post('/campaigns/1/launch')
+    post(client, '/campaigns/1/launch')
     monkeypatch.delenv('SMTP_PASSWORD')
-    response = client.post('/campaigns/1/recipients/1/send-email')
+    response = post(client, '/campaigns/1/recipients/1/send-email')
     assert response.status_code == 400 and b'SMTP_PASSWORD' in response.data
     connection = factory()
     with connection.cursor() as cursor:
         cursor.execute('UPDATE campaigns SET authorized=0 WHERE id=1')
     connection.close()
-    response = client.post('/campaigns/1/recipients/1/send-email')
+    response = post(client, '/campaigns/1/recipients/1/send-email')
     assert response.status_code == 400 and b'authorization' in response.data.lower()
     assert read_one(factory, 'SELECT sent_at FROM recipients WHERE id=1')['sent_at'] is None
 
@@ -392,7 +393,7 @@ def test_five_attachments_and_remaining_limit_enforced(db_client):
     assert save(client, attachments=[(io.BytesIO(b'guide'), f'guide{i}.txt') for i in range(5)]).status_code == 302
     assert len(template_store.get_template(1)['assets']) == 5
     values = template_form() | {'csrf_token': csrf(client), 'attachments': (io.BytesIO(b'new'), 'new.txt')}
-    assert b'five attachments' in client.post('/templates/1/edit', data=values).data
+    assert b'five attachments' in post(client, '/templates/1/edit', data=values).data
     assert len(template_store.get_template(1)['assets']) == 5
 
 
@@ -411,7 +412,7 @@ def test_delivery_serializes_template_replacement(campaign, monkeypatch):
     save(client); apply(client)
     save(client, subject='Replacement message')
     replacement = template_store.get_template(2)
-    client.post('/campaigns/1/launch'); client.get('/campaigns/1/email-preview')
+    post(client, '/campaigns/1/launch'); client.get('/campaigns/1/email-preview')
     token = csrf(client)
     smtp_entered = Event(); finish_smtp = Event(); apply_entered = Event(); apply_done = Event()
     class BlockingSMTP(FakeSMTP):
@@ -447,9 +448,9 @@ def test_invalid_tracking_configuration_fails_without_delivery(campaign, monkeyp
     monkeypatch.setenv('BASE_URL', 'javascript:unsafe')
     response = client.get('/campaigns/1/email-preview')
     assert response.status_code == 400
-    response = client.post('/templates/1/edit', data=template_form() | {'csrf_token': csrf(client), 'action': 'preview'})
+    response = post(client, '/templates/1/edit', data=template_form() | {'csrf_token': csrf(client), 'action': 'preview'})
     assert b'BASE_URL' in response.data
-    response = client.post('/campaigns/1/recipients/1/send-email', data={'csrf_token': csrf(client), 'authorized': 'on'})
+    response = post(client, '/campaigns/1/recipients/1/send-email', data={'csrf_token': csrf(client), 'authorized': 'on'})
     assert response.status_code == 400
     assert read_one(factory, 'SELECT sent_at FROM recipients WHERE id=1')['sent_at'] is None
 
@@ -460,7 +461,7 @@ def test_landing_has_no_credential_collection_and_rejects_posts(campaign):
     response = client.get('/t/' + token)
     assert response.status_code == 200
     assert b'<input' not in response.data and b'<form' not in response.data
-    assert client.post('/t/' + token, data={'password': 'never-store', 'otp': 'never-store'}).status_code == 405
+    assert post(client, '/t/' + token, data={'password': 'never-store', 'otp': 'never-store'}).status_code == 405
     event = read_one(factory, 'SELECT * FROM tracking_events')
     assert event['event_type'] == 'link_clicked'
     assert 'password' not in event and 'otp' not in event
@@ -468,6 +469,6 @@ def test_landing_has_no_credential_collection_and_rejects_posts(campaign):
 
 def test_campaign_creation_requires_authorization(db_client):
     client, factory = db_client
-    response = client.post('/campaigns/new', data={'campaign_name': 'Unauthorized', 'campaign_template': 'basic-link', 'start_date': '2026-10-12'})
+    response = post(client, '/campaigns/new', data={'campaign_name': 'Unauthorized', 'campaign_template': 'basic-link', 'start_date': '2026-10-12'})
     assert response.status_code == 400
     assert read_one(factory, 'SELECT COUNT(*) AS total FROM campaigns')['total'] == 0

@@ -5,7 +5,7 @@ import json
 
 from dotenv import load_dotenv
 from flask import Flask, render_template, request, redirect, url_for, session
-from werkzeug.exceptions import HTTPException
+from werkzeug.exceptions import HTTPException, SecurityError
 from database import get_db_connection
 from email_service import EmailDeliveryError, send_campaign_email, build_tracking_url, effective_template
 from template_content import TemplateValidationError, render_email, preview_digest
@@ -20,6 +20,8 @@ configure_studio(app)
 @app.errorhandler(HTTPException)
 def product_http_error(error):
     response = error.get_response()
+    if isinstance(error, SecurityError):
+        return response  # Untrusted hosts have no URL adapter for branded templates.
     response.set_data(render_template('error.html',code=error.code,message=error.description,public=request.path.startswith('/t/')))
     response.content_type = 'text/html; charset=utf-8'
     return response
@@ -743,4 +745,4 @@ def track_recipient_click(tracking_token):
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", debug=False, port=5055)
+    app.run(host=os.getenv("APP_HOST", "127.0.0.1"), debug=False, port=5055)

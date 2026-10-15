@@ -17,7 +17,7 @@ Generate a Fernet key once on the application server:
 python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
 ```
 
-Store that output privately as `SENDER_ENCRYPTION_KEY` in injected environment configuration or the ignored `.env` file. Do not put it in SQL, source control, browser pages, or shared setup documents. Restrict file access to the server operator. Keep a separate secure backup: losing or changing the key makes saved passwords unreadable. Key rotation requires decrypting/re-encrypting stored secrets through a controlled offline migration; this release does not implement automatic rotation. A missing/invalid key fails closed. Use the same key on every application worker.
+Store that output privately as `SENDER_ENCRYPTION_KEY` in injected environment configuration or the ignored `.env` file. Do not put it in SQL, source control, browser pages, or shared setup documents. Restrict file access to the server operator. Keep a separate secure backup: losing or changing the key makes saved passwords unreadable. Key rotation requires decrypting/re-encrypting stored secrets through a controlled offline migration; this release does not implement automatic rotation. A missing/invalid key fails closed. Keep the key stable across restarts. Operator sessions currently require one application worker; see the deployment guide.
 
 ## Account workflow
 
@@ -31,7 +31,7 @@ Passwords are write-only and encrypted with Fernet before database storage. Blan
 
 Gmail normally requires an app password. Microsoft/Outlook uses `smtp.office365.com:587` with STARTTLS and requires an account/tenant that still permits password-based authenticated SMTP. OAuth-only accounts need a future OAuth integration; this release does not circumvent provider policy. Custom SMTP supports STARTTLS and SSL/TLS, with certificate verification required. Local/private/link-local SMTP destinations and DNS results are rejected to prevent server-side network probing or secret leakage. DNS addresses are checked and pinned while certificates are validated against the original hostname.
 
-The existing application has no operator login. Keep the application on a trusted administrative network or behind an authenticated reverse proxy, and serve it over HTTPS before entering SMTP secrets. Set `SESSION_COOKIE_SECURE=1` there. Do not publish administrative campaign or sender pages to recipients. Reverse proxies and observability tools must not record request bodies containing SMTP passwords. Recipient landing pages remain read-only and never collect passwords, OTPs, or authentication credentials.
+Administrative routes now require the configured operator login; see [operator access and deployment](admin-security.md). Keep administration on a trusted network or behind an authenticated reverse proxy, and serve it over HTTPS before entering SMTP secrets. Set `SESSION_COOKIE_SECURE=1` there. Do not publish administrative campaign or sender pages to recipients. Reverse proxies and observability tools must not record request bodies containing SMTP passwords. Recipient landing pages remain read-only and never collect passwords, OTPs, or authentication credentials.
 
 ## Validation
 

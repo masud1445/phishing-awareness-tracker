@@ -18,6 +18,27 @@ const fs = require("fs");
   const page = await browser.newPage();
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
+  const anonymous = await browser.newPage();
+  const denied = await anonymous.goto(base + '/template-assets/1');
+  if (denied.status() !== 401) throw Error('Anonymous asset access was not denied');
+  if (process.env.UI_TRACKING_TOKEN) {
+    const publicResponse = await anonymous.goto(base + '/t/' + encodeURIComponent(process.env.UI_TRACKING_TOKEN));
+    if (publicResponse.status() !== 200) throw Error('Public awareness landing requires login');
+  }
+  await anonymous.close();
+  await page.goto(base + '/operator/login');
+  for (const width of [1440, 390]) {
+    await page.setViewport({width, height: 1100});
+    if (await page.evaluate(() => document.documentElement.scrollWidth > innerWidth))
+      throw Error('Login overflow');
+    await page.screenshot({path: path.join(output, `operator-login-${width}.png`), fullPage: true});
+  }
+  if (!process.env.UI_OPERATOR_USERNAME || !process.env.UI_OPERATOR_PASSWORD)
+    throw Error('Set UI_OPERATOR_USERNAME and UI_OPERATOR_PASSWORD for browser validation.');
+  await page.type('[name="username"]', process.env.UI_OPERATOR_USERNAME);
+  await page.type('[name="password"]', process.env.UI_OPERATOR_PASSWORD);
+  await Promise.all([page.waitForNavigation(), page.click('button[type="submit"]')]);
+  if (new URL(page.url()).pathname !== '/') throw Error('Operator login failed');
   const paths = [
     "/",
     "/campaigns",
@@ -147,6 +168,18 @@ const fs = require("fs");
     )) !== "none"
   )
     throw Error("Reduced motion failed");
+  if (process.env.UI_CAMPAIGN_ID) {
+    await page.goto(base + `/campaigns/${process.env.UI_CAMPAIGN_ID}/email-preview`, {waitUntil: 'networkidle0'});
+    const inlineImage = await page.$eval('iframe', frame => {
+      const image = frame.contentDocument.querySelector('img');
+      return image && image.complete && image.naturalWidth > 0;
+    });
+    if (!inlineImage) throw Error('Authenticated preview image did not load');
+  }
+  await Promise.all([page.waitForNavigation(), page.click('form[action="/operator/logout"] button')]);
+  if (new URL(page.url()).pathname !== '/operator/login') throw Error('Logout failed');
+  await page.goto(base + '/');
+  if (new URL(page.url()).pathname !== '/operator/login') throw Error('Logged-out admin access allowed');
   fs.writeFileSync(
     path.join(output, "accessibility.json"),
     JSON.stringify(accessibility, null, 2),

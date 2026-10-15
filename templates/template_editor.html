@@ -185,7 +185,7 @@
 <strong>{{ preview.sender_name }}</strong> &lt;{{ preview.sender_email }}&gt;<br>
 <strong>{{ preview.subject }}</strong>
 </div>
-<iframe title="Sample email preview" sandbox srcdoc="{{ preview.html }}">
+<iframe title="Sample email preview" sandbox="allow-same-origin" srcdoc="{{ preview.html }}">
 </iframe>
 <details>
 <summary>Plain-text version</summary>

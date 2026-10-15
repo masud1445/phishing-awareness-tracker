@@ -1,3 +1,4 @@
+from conftest import post, login_operator
 import json
 import os
 import pytest
@@ -22,7 +23,7 @@ def test_workspace_pages_render_shared_shell_and_no_secrets(db_client, url):
 
 def test_analytics_counts_real_approved_recipients_and_deduplicates(campaign):
     client, factory = campaign
-    client.post('/campaigns/1/recipients/new',data={'full_name':'Not approved','email':'pending@example.com'})
+    post(client, '/campaigns/1/recipients/new',data={'full_name':'Not approved','email':'pending@example.com'})
     connection = factory()
     with connection.cursor() as cursor:
         for recipient in [1,1,2]:
@@ -55,18 +56,18 @@ def test_safe_email_layouts_are_persisted_and_preview_matches_delivery(campaign,
     client, factory = campaign
     token = csrf(client)
     form = template_form() | {'body':'## Reminder\nHello {{recipient_name}}\n---\nReview the campaign.', 'button_label':'View awareness details','email_heading':'Make informed decisions','text_alignment':'center','content_style':layout,'csrf_token':token}
-    assert client.post('/templates/new',data=form).status_code == 302
+    assert post(client, '/templates/new',data=form).status_code == 302
     saved = template_store.get_template(1)
     assert saved['presentation']['button_label'] == 'View awareness details'
-    assert client.post('/campaigns/1/studio',data={'template_id':1,'csrf_token':token,'authorized':'on'}).status_code == 302
+    assert post(client, '/campaigns/1/studio',data={'template_id':1,'csrf_token':token,'authorized':'on'}).status_code == 302
     snapshot = template_store.campaign_template(1)
     assert snapshot['presentation'] == saved['presentation']
-    client.post('/campaigns/1/launch')
+    post(client, '/campaigns/1/launch')
     preview = client.get('/campaigns/1/email-preview')
     assert b'View awareness details' in preview.data and b'Make informed decisions' in preview.data
     FakeSMTP.messages=[];FakeSMTP.events=[]
     monkeypatch.setattr(email_service.smtplib,'SMTP',FakeSMTP)
-    assert client.post('/campaigns/1/recipients/1/send-email',data={'csrf_token':token,'authorized':'on'}).status_code == 302
+    assert post(client, '/campaigns/1/recipients/1/send-email',data={'csrf_token':token,'authorized':'on'}).status_code == 302
     connection=factory()
     with connection.cursor() as cursor:
         cursor.execute('SELECT * FROM recipients WHERE id=1'); recipient=cursor.fetchone()
@@ -112,7 +113,7 @@ def test_template_library_exposes_real_asset_metadata(db_client):
 def test_unknown_route_and_invalid_action_show_product_error_page(db_client):
     client, _ = db_client
     assert client.get('/not-a-page').status_code == 404
-    response=client.post('/campaigns/new',data={})
+    response=post(client, '/campaigns/new',data={})
     assert response.status_code == 400
     assert b'role="alert"' in response.data and b'Missing required campaign information' in response.data
 
@@ -130,18 +131,18 @@ def test_presentation_changes_require_new_recipient_review(campaign,monkeypatch)
     token=csrf(client)
     template_store.save_template(validate_template(template_form()),[])
     template_store.apply_template(1,template_store.get_template(1))
-    client.post('/campaigns/1/launch');client.get('/campaigns/1/email-preview')
+    post(client, '/campaigns/1/launch');client.get('/campaigns/1/email-preview')
     template_store.save_template(validate_template(template_form()|{'button_label':'Updated button'}),[])
     template_store.apply_template(1,template_store.get_template(2))
     FakeSMTP.messages=[];FakeSMTP.events=[]
     monkeypatch.setattr(email_service.smtplib,'SMTP',FakeSMTP)
-    response=client.post('/campaigns/1/recipients/1/send-email',data={'csrf_token':token,'authorized':'on'})
+    response=post(client, '/campaigns/1/recipients/1/send-email',data={'csrf_token':token,'authorized':'on'})
     assert response.status_code == 400 and not FakeSMTP.messages
 
 
 def test_http_error_preserves_allowed_methods_header(db_client):
     client, _=db_client
-    response=client.post('/t/unavailable',data={})
+    response=post(client, '/t/unavailable',data={})
     assert response.status_code == 405
     assert 'GET' in response.headers['Allow']
 
