@@ -25,3 +25,4 @@ app.py.before_*
 
 # macOS
 .DS_Store
+instance/
