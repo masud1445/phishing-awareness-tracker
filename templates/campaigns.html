@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% from 'components/ui.html' import icon,metric,campaign_table,empty %}
+{% block title %}Campaigns · Phishing Awareness Tracker{% endblock %}
+{% block content %}
+<div class="page-heading">
+<div>
+<span class="eyebrow">CAMPAIGN OPERATIONS</span>
+<h2>Campaigns</h2>
+<p>Plan purposeful awareness exercises. Keep every audience and message under your control.</p>
+</div>
+<a class="btn" href="{{ url_for('create_campaign') }}">{{ icon('plus',18) }} Create campaign</a>
+</div>
+<section class="stats">{{ metric('All campaigns',total_campaigns,'Your complete campaign workspace','folder') }}{{ metric('Active',active_count,'Campaigns enabled for authorized delivery','shield','green') }}{{ metric('In draft',draft_count,'Prepare and review before launch','file','orange') }}{{ metric('Approved audience',total_recipients,'Campaign recipient memberships','users','cyan') }}</section>
+<section class="panel" data-filter-scope>
+<div class="panel-heading">
+<div>
+<h3>Campaign directory</h3>
+<p>Open a campaign to manage its audience, template, and results.</p>
+</div>
+<span class="badge neutral">{{ total_campaigns }} campaigns</span>
+</div>
+{% if campaigns %}
+<div class="filter-bar">
+<label class="search-control">{{ icon('search',18) }}<span class="sr-only">Search campaigns</span>
+<input type="search" data-search placeholder="Search name, type, or status">
+</label>
+<span class="filter-count" data-filter-count>{{ total_campaigns }} campaigns</span>
+</div>{{ campaign_table(campaigns) }}<p class="no-filter-results" hidden>No matching campaigns. Try a different search.</p>
+{% else %}{{ empty('A new campaign, a stronger team','Build your first awareness exercise with an approved audience and a reviewed email.',url_for('create_campaign'),'Create campaign') }}{% endif %}
+</section>
+{% endblock %}

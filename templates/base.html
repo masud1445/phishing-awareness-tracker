@@ -1,0 +1,77 @@
+{% from 'components/ui.html' import icon %}
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>
+{% block title %}Phishing Awareness Tracker{% endblock %}
+</title>
+<link rel="stylesheet" href="{{ url_for('static',filename='css/style.css') }}">
+<link rel="stylesheet" href="{{ url_for('static',filename='css/studio.css') }}">
+<script src="{{ url_for('static',filename='js/app-ui.js') }}" defer>
+</script>
+<link rel="icon" type="image/svg+xml" href="{{ url_for('static',filename='favicon.svg') }}">
+</head>
+<body>
+<a class="skip-link" href="#main-content">Skip to content</a>
+<div class="app-shell">
+<aside class="app-sidebar" id="app-navigation">
+<a class="brand" href="{{ url_for('home') }}">
+<span class="brand-mark">{{ icon('shield',27) }}</span>
+<span>
+<strong>Phishing Awareness</strong>
+<small>Security workspace</small>
+</span>
+</a>
+<span class="nav-label">WORKSPACE</span>
+<nav aria-label="Main navigation">
+{% for endpoint,label,glyph in [('home','Dashboard','grid'),('campaign_directory','Campaigns','folder'),('recipient_directory','Recipients','users'),('studio.library','Template Studio','mail'),('senders.manage','Sender Accounts','lock'),('analytics_overview','Analytics','chart'),('platform_settings','Settings','settings')] %}
+{% set current=request.endpoint == endpoint or (endpoint == 'studio.library' and request.endpoint in ['studio.editor']) or (endpoint == 'senders.manage' and request.endpoint in ['senders.edit','senders.action']) or (endpoint == 'campaign_directory' and request.endpoint in ['create_campaign','campaign_recipients','add_recipient','studio.campaign_studio','campaign_email_preview','send_recipient_email','campaign_results']) %}
+<a href="{{ url_for(endpoint) }}" {% if current %}aria-current="page"{% endif %}>{{ icon(glyph) }}<span>{{ label }}</span>
+{% if current %}
+<i>
+</i>
+{% endif %}
+</a>
+{% endfor %}
+</nav>
+<div class="sidebar-note">{{ icon('shield',26) }}<strong>Awareness, with care.</strong>
+<p>Approved audiences.<br>Engagement only.<br>No credential collection.</p>
+<a href="{{ url_for('platform_settings') }}">View platform controls {{ icon('arrow',16) }}</a>
+</div>
+<div class="sidebar-footer">
+<span class="status-dot">
+</span> Authorized training workspace</div>
+</aside>
+<button type="button" class="nav-backdrop" aria-label="Close navigation" hidden>
+</button>
+<div class="app-workspace">
+<header class="app-header">
+<div>
+<button class="nav-toggle btn-icon" type="button" aria-controls="app-navigation" aria-expanded="false" aria-label="Open navigation">{{ icon('menu') }}</button>
+<span class="breadcrumb">Workspace <span>/</span> {{ {'home':'Dashboard','campaign_directory':'Campaigns','recipient_directory':'Recipients','studio.library':'Template Studio','studio.editor':'Template editor','senders.manage':'Sender Accounts','senders.edit':'Sender setup','analytics_overview':'Analytics','platform_settings':'Settings','campaign_email_preview':'Email preview','campaign_results':'Campaign results','campaign_recipients':'Campaign audience','create_campaign':'New campaign','add_recipient':'Add recipient','studio.campaign_studio':'Campaign email'}.get(request.endpoint,'Request details') }}</span>
+</div>
+<div class="header-actions">
+<span class="header-safety">{{ icon('shield',16) }} Authorized use only</span>
+<span class="operator-avatar" title="Authenticated operator">PA</span>
+<form method="post" action="{{ url_for('operator.logout') }}"><input type="hidden" name="csrf_token" value="{{ studio_csrf() }}"><button class="btn-quiet" type="submit">Sign out</button></form>
+</div>
+</header>
+<main id="main-content" class="app-content" tabindex="-1">
+{% block content %}
+{% endblock %}
+</main>
+<footer class="app-footer">
+<span>Phishing Awareness Tracker</span>
+<span>Privacy by design · Authorized security training</span>
+</footer>
+</div>
+</div>
+<div class="loading-bar" role="status" aria-label="Loading page" hidden>
+</div>
+<div id="ui-feedback" class="sr-only" role="status" aria-live="polite">
+</div>
+</body>
+</html>

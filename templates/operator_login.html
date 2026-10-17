@@ -1,0 +1,23 @@
+{% extends 'public_base.html' %}
+{% from 'components/ui.html' import icon %}
+{% block title %}Operator sign in · Phishing Awareness Tracker{% endblock %}
+{% block content %}
+<section class="panel" style="max-width:560px;margin:24px auto">
+<div class="guidance-icon">{{ icon('lock',26) }}</div>
+<span class="eyebrow">ADMINISTRATIVE ACCESS</span>
+<h2>Operator sign in</h2>
+<p>Sign in to manage authorized campaigns, templates, recipients, and sender accounts.</p>
+{% if error %}<div class="studio-error" role="alert">{{ error }}</div>{% endif %}
+{% if not unavailable %}
+<form method="post" action="{{ url_for('operator.login') }}">
+<input type="hidden" name="csrf_token" value="{{ studio_csrf() }}">
+<div class="form-grid">
+<div class="form-group full-width"><label for="username">Operator username</label><input id="username" name="username" autocomplete="username" maxlength="200" required></div>
+<div class="form-group full-width"><label for="password">Operator password</label><input id="password" name="password" type="password" autocomplete="current-password" maxlength="4096" required></div>
+</div>
+<div class="form-actions"><button class="btn" type="submit">Sign in {{ icon('arrow',16) }}</button></div>
+</form>
+{% endif %}
+<p class="muted" style="margin-top:24px;font-size:13px">This sign-in is for platform operators. Awareness participants do not need an account and are never asked for passwords or OTPs.</p>
+</section>
+{% endblock %}

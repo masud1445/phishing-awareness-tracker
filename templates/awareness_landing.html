@@ -1,34 +1,25 @@
-<!DOCTYPE html>
-<html lang="en">
+{% from 'components/ui.html' import icon %}
+<!doctype html>
+<html lang='en'>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <title>Security Awareness | Phishing Awareness Tracker</title>
-
-    <link rel="stylesheet"
-          href="{{ url_for('static', filename='css/style.css') }}">
+<meta charset='UTF-8'>
+<meta name='viewport' content='width=device-width,initial-scale=1'>
+<title>Security Awareness · Phishing Awareness Tracker</title>
+<link rel='stylesheet' href="{{ url_for('static',filename='css/style.css') }}">
+<link rel="icon" type="image/svg+xml" href="{{ url_for('static',filename='favicon.svg') }}">
 </head>
-
-<body>
-
-<header class="topbar">
-    <div class="brand">
-        <div class="logo">PA</div>
-
-        <div>
-            <h1>Security Awareness</h1>
-            <p>Phishing Awareness Tracker</p>
-        </div>
-    </div>
+<body class='public-page'>
+<header class='public-header'>
+<span class='brand-mark'>{{ icon('shield',25) }}</span>
+<div>
+<strong>Security awareness</strong>
+<small>Phishing Awareness Tracker</small>
+</div>
 </header>
+<main class='public-content'>
+<section class="awareness-result">
 
-
-<main class="container">
-
-    <section class="awareness-result">
-
-        <div class="awareness-icon">🛡️</div>
+        <div class="awareness-icon">{{ icon('shield',42) }}</div>
 
         <span class="hero-label">
             AWARENESS CHECK COMPLETED
@@ -92,13 +83,10 @@
         </div>
 
     </section>
-
-
-    <div class="footer">
-        Phishing Awareness Tracker · Security Awareness Program
-    </div>
-
 </main>
-
+<footer class='app-footer'>
+<span>Authorized awareness program</span>
+<span>Engagement only · Privacy protected</span>
+</footer>
 </body>
 </html>

@@ -1,0 +1,98 @@
+{% extends 'studio_base.html' %}
+{% from 'components/ui.html' import icon %}
+{% block title %}{{ 'Edit' if account.id else 'Add' }} sender{% endblock %}
+{% block content %}
+<section class="studio-heading">
+<div>
+<span class="eyebrow">SENDER CONNECTION</span>
+<h2>{{ 'Edit sender' if account.id else 'Add sender' }}</h2>
+<p>Store an operator SMTP/app password securely. This form is never shown to campaign recipients.</p>
+</div>
+<a class="btn-secondary" href="{{ url_for('senders.manage') }}">Manage senders</a>
+</section>
+{% if error %}
+<div class="studio-error" role="alert">{{ error }}</div>
+{% endif %}
+<div class="two-column">
+<section class="panel">
+<div class="step-heading">
+<span>{{ icon('mail',20) }}</span>
+<div>
+<h3>Account & connection</h3>
+<p>Credentials are write-only. Connection changes require a fresh test.</p>
+</div>
+</div>
+<form method="post" autocomplete="off">
+<input type="hidden" name="csrf_token" value="{{ studio_csrf() }}">
+<div class="form-grid">
+{% for name,label in [('display_name','Display name'),('email','Email address'),('smtp_host','SMTP host'),('smtp_username','SMTP username')] %}
+<div class="form-group">
+<label for="{{ name }}">{{ label }}</label>
+<input id="{{ name }}" name="{{ name }}" type="{{ 'email' if name == 'email' else 'text' }}" value="{{ account.get(name,'') }}" maxlength="254" required>
+</div>
+{% endfor %}
+<div class="form-group">
+<label for="provider">Provider</label>
+<select id="provider" name="provider">
+{% for value,label in [('gmail','Gmail SMTP'),('outlook','Microsoft / Outlook SMTP'),('custom','Custom SMTP')] %}
+<option value="{{ value }}" {% if account.provider == value %}selected{% endif %}>{{ label }}</option>
+{% endfor %}
+</select>
+</div>
+<div class="form-group">
+<label for="smtp_port">SMTP port</label>
+<input id="smtp_port" name="smtp_port" type="number" min="1" max="65535" required value="{{ account.smtp_port }}">
+</div>
+<div class="form-group">
+<label for="tls_mode">TLS / SSL mode</label>
+<select id="tls_mode" name="tls_mode">
+<option value="starttls" {% if account.tls_mode == 'starttls' %}selected{% endif %}>STARTTLS (usually 587)</option>
+<option value="ssl" {% if account.tls_mode == 'ssl' %}selected{% endif %}>SSL / TLS (usually 465)</option>
+</select>
+</div>
+<div class="form-group">
+<label for="smtp_password">SMTP / app password</label>
+<input id="smtp_password" name="smtp_password" type="password" autocomplete="new-password" maxlength="4096" {% if not account.id %}required{% endif %}>
+<small>
+{% if account.id %}Leave blank to retain the saved encrypted secret. {% endif %}Never displayed after saving. Connection changes require verification again.</small>
+</div>
+</div>
+<div class="studio-notice">Gmail generally needs an app password. Microsoft tenants must permit authenticated SMTP; accounts requiring OAuth-only authentication cannot use this password-based connection. Custom SMTP must use verified TLS and a publicly reachable host.</div>
+<div class="studio-actions">
+<button class="btn" type="submit">Save sender</button>
+</div>
+</form>
+</section>
+<aside class="callout">
+<div class="guidance-icon">{{ icon('lock',25) }}</div>
+<h3>A trusted sender in three steps</h3>
+<ol class="guide-list">
+<li>
+<span>1</span>
+<div>
+<strong>Connect an account</strong>
+<p>Use your provider's SMTP hostname and an app password where required.</p>
+</div>
+</li>
+<li>
+<span>2</span>
+<div>
+<strong>Test the connection</strong>
+<p>Verify TLS, authentication, and sender acceptance. No email is sent.</p>
+</div>
+</li>
+<li>
+<span>3</span>
+<div>
+<strong>Select and review</strong>
+<p>Choose the verified sender for a template or campaign, then preview before delivery.</p>
+</div>
+</li>
+</ol>
+<span class="badge verified">{{ icon('shield',14) }} Passwords encrypted at rest</span>
+<p style="margin-top:18px">Only verified, enabled sender identities can deliver Studio messages. An arbitrary From address is never accepted.</p>
+</aside>
+</div>
+<script src="{{ url_for('static', filename='js/senders.js') }}" defer>
+</script>
+{% endblock %}

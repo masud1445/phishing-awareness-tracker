@@ -1,54 +1,25 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <title>Create Campaign | Phishing Awareness Tracker</title>
-
-    <link rel="stylesheet"
-          href="{{ url_for('static', filename='css/style.css') }}">
-</head>
-
-<body>
-
-<header class="topbar">
-    <div class="brand">
-        <div class="logo">PA</div>
-
-        <div>
-            <h1>Phishing Awareness Tracker</h1>
-            <p>Security Awareness & Phishing Analytics</p>
-        </div>
-    </div>
-
-    <div class="status">
-        ● Authorized Training Environment
-    </div>
-</header>
-
-
-<main class="container">
-
-    <a class="back-link" href="{{ url_for('home') }}">
-        ← Back to Dashboard
-    </a>
-
-    <section class="form-card">
-
-        <div class="form-header">
-            <span class="hero-label">NEW CAMPAIGN</span>
-
-            <h2>Create Awareness Campaign</h2>
-
-            <p>
-                Configure an authorized phishing awareness campaign. No passwords, OTPs or sensitive credentials
-                will be collected.
-            </p>
-        </div>
-
-
-        <form method="POST" action="{{ url_for('create_campaign') }}">
+{% extends 'base.html' %}
+{% from 'components/ui.html' import icon,steps %}
+{% block title %}Create awareness campaign · Phishing Awareness Tracker{% endblock %}
+{% block content %}
+<div class='page-heading'>
+<div>
+<span class='eyebrow'>NEW CAMPAIGN</span>
+<h2>Create awareness campaign</h2>
+<p>Build an authorized exercise in a few deliberate steps. Nothing is sent when you create a draft.</p>
+</div>
+<a class='btn-secondary' href="{{ url_for('campaign_directory') }}">{{ icon('folder',18) }} Campaigns</a>
+</div>{{ steps(1) }}<div class='two-column'>
+<section class='form-card'>
+<div class='step-heading'>
+<span>01</span>
+<div>
+<h3>Campaign details</h3>
+<p>Define your training objective and starting date.</p>
+</div>
+</div>
+<form method="POST" action="{{ url_for('create_campaign') }}">
+<input type="hidden" name="csrf_token" value="{{ studio_csrf() }}">
 
             <div class="form-grid">
 
@@ -71,12 +42,13 @@
                         id="purpose"
                         name="purpose"
                         rows="4"
-                        placeholder="Describe the training objective of this campaign"></textarea>
+                        placeholder="Describe the training objective of this campaign">
+</textarea>
                 </div>
 
 
                 <div class="form-group">
-                    <label for="template">Campaign Template</label>
+                    <label for="campaign_template">Campaign Template</label>
 
                     <select id="campaign_template" name="campaign_template" required>
                         <option value="">Select a safe template</option>
@@ -137,15 +109,37 @@
             </div>
 
         </form>
-
-    </section>
-
-
-    <div class="footer">
-        CyberAssess · Phishing Awareness Tracker · Authorized Internal Use
-    </div>
-
-</main>
-
-</body>
-</html>
+</section>
+<aside>
+<section class='callout'>
+<div class='guidance-icon'>{{ icon('shield',25) }}</div>
+<h3>Designed for responsible training</h3>
+<p>A safe campaign starts with a clear purpose and an approved audience.</p>
+<ol class='guide-list'>
+<li>
+<span>1</span>
+<div>
+<strong>Prepare the campaign</strong>
+<p>Create a draft and confirm your authorization.</p>
+</div>
+</li>
+<li>
+<span>2</span>
+<div>
+<strong>Approve your audience</strong>
+<p>Each recipient must be approved within this campaign.</p>
+</div>
+</li>
+<li>
+<span>3</span>
+<div>
+<strong>Review before delivery</strong>
+<p>Choose a verified sender and preview the personalized email.</p>
+</div>
+</li>
+</ol>
+<span class='badge verified'>{{ icon('lock',14) }} No credential collection</span>
+</section>
+</aside>
+</div>
+{% endblock %}

@@ -1,3 +1,4 @@
+from conftest import post, login_operator
 import app as app_module
 
 
@@ -77,9 +78,9 @@ def test_unapproved_recipient_is_blocked(monkeypatch):
         fake_send,
     )
 
-    client = app_module.app.test_client()
+    client = login_operator(app_module.app.test_client())
 
-    response = client.post(
+    response = post(client,
         "/campaigns/1/recipients/1/send-email"
     )
 
@@ -112,9 +113,9 @@ def test_approved_recipient_email_flow(monkeypatch):
         fake_send,
     )
 
-    client = app_module.app.test_client()
+    client = login_operator(app_module.app.test_client())
 
-    response = client.post(
+    response = post(client,
         "/campaigns/1/recipients/1/send-email"
     )
 
@@ -154,9 +155,9 @@ def test_email_delivery_failure_does_not_mark_sent(monkeypatch):
         fake_send,
     )
 
-    client = app_module.app.test_client()
+    client = login_operator(app_module.app.test_client())
 
-    response = client.post(
+    response = post(client,
         "/campaigns/1/recipients/1/send-email"
     )
 

@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+{% from 'components/ui.html' import icon %}
+{% block title %}Settings · Phishing Awareness Tracker{% endblock %}
+{% block content %}
+<div class="page-heading">
+<div>
+<span class="eyebrow">PLATFORM CONFIGURATION</span>
+<h2>Settings & security</h2>
+<p>Understand the controls behind your workspace. Sensitive configuration stays private.</p>
+</div>
+<span class="badge neutral">{{ icon('lock',16) }} No secrets displayed</span>
+</div>
+<div class="settings-grid">
+<section class="panel controls-panel">
+<div class="guidance-icon">{{ icon('shield',25) }}</div>
+<h3>Campaign protection</h3>
+<p>These safeguards are enforced by the application.</p>
+{% for title,text in [('Approved recipients','Required before delivery'),('Campaign authorization','Required before creation and Studio delivery'),('Credential collection','Never collected from participants'),('Click tracking','Deduplicated per recipient'),('Template snapshots','Preserved per campaign')] %}
+<div class="setting-row">
+<span>{{ title }}</span>
+<strong>{{ text }}</strong>
+</div>
+{% endfor %}
+</section>
+<section class="panel">
+<div class="guidance-icon">{{ icon('mail',25) }}</div>
+<h3>Sender configuration</h3>
+<p>Manage identities without exposing stored passwords.</p>
+<div class="setting-row">
+<span>Saved accounts</span>
+<strong>{{ accounts|length }}</strong>
+</div>
+<div class="setting-row">
+<span>Verified and selectable</span>
+<strong>{{ verified_count }}</strong>
+</div>
+<div class="setting-row">
+<span>Encryption key configuration</span>
+<span class="badge {{ 'verified' if encryption_ready else 'pending' }}">{{ 'Configured' if encryption_ready else 'Setup required' }}</span>
+</div>
+<a class="btn" style="margin-top:22px" href="{{ url_for('senders.manage') }}">Manage senders {{ icon('arrow',16) }}</a>
+</section>
+<section class="panel">
+<div class="guidance-icon">{{ icon('file',25) }}</div>
+<h3>Private assets</h3>
+<p>Uploads are stored in MySQL, outside the public static directory.</p>
+<div class="setting-row">
+<span>Allowed attachments</span>
+<strong>PDF · PNG · JPEG · DOCX · TXT</strong>
+</div>
+<div class="setting-row">
+<span>Maximum per file</span>
+<strong>5 MB</strong>
+</div>
+<div class="setting-row">
+<span>Validation</span>
+<strong>Content, filename, and integrity</strong>
+</div>
+<div class="setting-row">
+<span>Scripts, macros, archives</span>
+<strong>Rejected</strong>
+</div>
+</section>
+<section class="panel">
+<div class="guidance-icon">{{ icon('settings',25) }}</div>
+<h3>Deployment configuration</h3>
+<p>Server environment settings are managed by your administrator.</p>
+<div class="setting-row">
+<span>Application database</span>
+<strong>MySQL</strong>
+</div>
+<div class="setting-row">
+<span>Secure session cookies</span>
+<span class="badge {{ 'verified' if https_cookies else 'pending' }}">{{ 'Enabled' if https_cookies else 'Local / HTTP mode' }}</span>
+</div>
+<div class="setting-row">
+<span>SMTP connection security</span>
+<strong>Certificate-verified TLS</strong>
+</div>
+<div class="studio-notice" style="margin:22px 0 0">Use HTTPS and an authenticated administrative gateway for a professional deployment. Configure secure cookies on the server.</div>
+</section>
+</div>
+{% endblock %}

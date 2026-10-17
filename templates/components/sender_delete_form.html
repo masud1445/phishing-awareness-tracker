@@ -1,0 +1,10 @@
+<h2 id="sender-delete-title">Permanently delete sender?</h2>
+<p><strong data-delete-name>{{ account.display_name if account else '' }}</strong><br><span data-delete-email>{{ account.email if account else '' }}</span></p>
+<p>The encrypted sender credential will be permanently removed. Historical campaign records and template snapshots will remain readable. This action cannot be undone.</p>
+<p>Default senders, server-configured identities, and senders required by active campaigns cannot be deleted. Select another valid sender first, or use reversible Disable.</p>
+{% if error %}<div class="studio-error" role="alert">{{ error }}</div>{% endif %}
+<form method="post" action="{{ url_for('senders.action',account_id=account.id,action='delete') if account else '' }}" data-delete-form>
+<input type="hidden" name="csrf_token" value="{{ studio_csrf() }}">
+<div class="form-group"><label for="operator-delete-password">Current operator password</label><input id="operator-delete-password" type="password" name="operator_password" autocomplete="current-password" maxlength="4096" required></div>
+<div class="form-actions"><button class="btn btn-danger" type="submit">Permanently delete sender</button><a class="btn-secondary" href="{{ url_for('senders.manage') }}" data-delete-cancel>Cancel</a></div>
+</form>
