@@ -1,4 +1,6 @@
 """Operator-only account management forms; passwords are write-only inputs."""
+from werkzeug.security import check_password_hash
+from security import credentials, login_budget
 from template_content import TemplateValidationError
 from flask import Blueprint, abort, redirect, render_template, request, url_for
 
@@ -41,11 +43,31 @@ def edit(account_id=None):
     return render_template('sender_account_form.html', account=account, error=error)
 
 
+@senders.route('/senders/<int:account_id>/delete', methods=['GET'])
+def confirm_delete(account_id):
+    account = get_account(account_id)
+    if account is None or account['deleted']:
+        abort(404)
+    return render_template('sender_delete.html', account=account, error=None)
+
+
 @senders.route('/senders/<int:account_id>/<action>', methods=['POST'])
 def action(account_id, action):
     from studio import require_csrf
     require_csrf()
     try:
+        if action == 'delete':
+            account = get_account(account_id)
+            if account is None or account['deleted']:
+                abort(404)
+            password = request.form.get('operator_password', '')
+            if not password:
+                return render_template('sender_delete.html', account=account, error='Enter your current operator password.'), 400
+            if not login_budget():
+                abort(429, 'Too many password attempts. Try again in ten minutes.')
+            configured = credentials()
+            if not configured or len(password) > 4096 or not check_password_hash(configured[1], password):
+                return render_template('sender_delete.html', account=account, error='Current operator password is incorrect. Nothing was deleted.'), 400
         if action == 'test':
             verify_account(account_id)
         else:

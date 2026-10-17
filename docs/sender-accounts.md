@@ -41,3 +41,15 @@ TEST_MYSQL_DATABASE=awareness_studio_test python -m pytest -q
 ```
 
 Use a separate empty MySQL test database; the fixture refuses the application database or a populated schema. SMTP transports are replaced with doubles and no real emails are sent. Tests cover account CRUD/defaults, verification, TLS destinations, encrypted storage, sender preview/delivery consistency, historical snapshots, and existing campaign controls.
+
+## Permanent credential deletion
+
+Delete opens a confirmation dialog showing the selected sender's display name and email. Enter the **current operator password**, not the SMTP/app password. The server verifies it against ADMIN_PASSWORD_HASH on every deletion request; wrong or missing passwords leave the account untouched. Re-authentication uses the existing per-address sign-in throttle (five attempts per ten minutes, shared with login). Passwords are never echoed into HTML or stored with the account. Cancel and Escape clear the dialog's password field. Without JavaScript, Delete opens the same confirmation as a normal page.
+
+The default sender cannot be deleted until another verified sender is selected as default. A sender referenced by an active campaign cannot be deleted until that campaign selects another verified sender; campaigns locked after delivery continue to protect their sender. Server-environment identities cannot be deleted through the web application: use reversible Disable or manage server configuration. These checks run in the deletion transaction.
+
+Deletion removes the encrypted credential and verification state while retaining the sender metadata row, historical campaigns and template snapshots. Disable remains reversible, retains the encrypted credential, requires no password re-entry, and continues to require verification after re-enabling.
+
+Browser regression checks optionally accept `UI_DELETE_FIXTURE_SENDER_ID=2` for the disposable browser fixture. They refuse to perform destructive checks unless the response identifies itself as the isolated automated fixture. Never use these checks against production.
+
+Deletion-hardening validation: **286 isolated tests passed and 286 MySQL tests passed**. Browser validation passed all 90 page/viewport combinations plus desktop/mobile deletion-dialog accessibility, identity details, cancellation, Escape, password clearing, and missing/wrong/correct-password behavior. The 27-plugin secret scan and exact private-credential comparisons found no real secrets; disposable test values and the token alphabet were reviewed as false positives. No real email was sent.

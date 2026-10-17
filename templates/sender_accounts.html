@@ -56,10 +56,14 @@
 {% endif %}
 {% for action,label in [('test','Test connection'),('default','Set default'),('disable','Disable'),('enable','Enable'),('delete','Delete')] %}
 {% if (action == 'enable' and not account.enabled) or (action != 'enable' and account.enabled) or action == 'delete' %}
-<form method="post" action="{{ url_for('senders.action',account_id=account.id,action=action) }}" {% if action == 'delete' %}data-confirm-delete{% endif %}>
+{% if action == 'delete' %}
+<a class="btn-secondary btn-danger" href="{{ url_for('senders.confirm_delete',account_id=account.id) }}" data-delete-sender data-sender-name="{{ account.display_name }}" data-sender-email="{{ account.email }}">Delete</a>
+{% else %}
+<form method="post" action="{{ url_for('senders.action',account_id=account.id,action=action) }}">
 <input type="hidden" name="csrf_token" value="{{ studio_csrf() }}">
 <button class="btn-secondary {{ 'btn-danger' if action == 'delete' else '' }}" type="submit" {% if action == 'default' and not account.verified %}disabled{% endif %}>{{ label }}</button>
 </form>
+{% endif %}
 {% endif %}
 {% endfor %}
 </div>
@@ -75,4 +79,7 @@
 </div>
 </div>
 </section>
+<dialog id="sender-delete-dialog" class="sender-delete-dialog" aria-labelledby="sender-delete-title">
+{% with account=none %}{% include 'components/sender_delete_form.html' %}{% endwith %}
+</dialog>
 {% endblock %}

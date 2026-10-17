@@ -300,6 +300,18 @@ def account_action(account_id, action):
                 cursor.execute('UPDATE sender_preferences SET default_sender_id=%s WHERE id=1', (account_id,))
             else:
                 if action == 'delete':
+                    if row['source_key']:
+                        raise SenderAccountError('This sender is required by server configuration and cannot be deleted. Disable it instead.')
+                    cursor.execute('SELECT default_sender_id FROM sender_preferences WHERE id=1 FOR UPDATE')
+                    preference = cursor.fetchone()
+                    if preference and preference['default_sender_id'] == account_id:
+                        raise SenderAccountError('Select another verified default sender before deleting this account.')
+                    # Lock campaign settings while checking current dependencies, including
+                    # drafts that could otherwise be launched concurrently with deletion.
+                    cursor.execute('SELECT c.status, s.snapshot FROM campaigns c JOIN campaign_email_settings s ON s.campaign_id=c.id FOR UPDATE')
+                    for setting in cursor.fetchall():
+                        if setting['status'] == 'active' and str(json.loads(setting['snapshot']).get('sender_account_id')) == str(account_id):
+                            raise SenderAccountError('An active campaign requires this sender. Select another verified sender for that campaign before deleting it.')
                     cursor.execute('UPDATE sender_accounts SET deleted=1,enabled=0,verified=0,encrypted_password=NULL,verification_digest=NULL,revision=revision+1 WHERE id=%s', (account_id,))
                 else:
                     cursor.execute('UPDATE sender_accounts SET enabled=%s,verified=0,verification_digest=NULL,revision=revision+1 WHERE id=%s', (int(action == 'enable'), account_id))

@@ -1,4 +1,4 @@
-from conftest import post, login_operator
+from conftest import post, login_operator, TEST_OPERATOR_PASSWORD
 """Account integration tests use isolated SQL and a non-network SMTP double."""
 from contextlib import contextmanager
 import os
@@ -132,6 +132,11 @@ def test_disabled_deleted_block_delivery_and_keep_history(campaign, transport, a
     template_id = template_store.save_template(template, [])
     template_store.apply_template(1, template_store.get_template(template_id))
     post(client, '/campaigns/1/launch'); client.get('/campaigns/1/email-preview')
+    if action == 'delete':
+        connection = factory()
+        with connection.cursor() as cursor:
+            cursor.execute("UPDATE campaigns SET status='completed' WHERE id=1")
+        connection.close()
     accounts.account_action(identity, action)
     response = client.get('/campaigns/1/email-preview')
     assert response.status_code == 200 and b'training@sender.example' in response.data
@@ -251,7 +256,7 @@ def test_management_csrf_and_validation_never_echo_password(db_client):
     identity = create()
     assert client.post(f'/senders/{identity}/delete').status_code == 400
     assert accounts.get_account(identity)['deleted'] == 0
-    assert post(client, f'/senders/{identity}/delete', data={'csrf_token':csrf(client)}).status_code == 302
+    assert post(client, f'/senders/{identity}/delete', data={'csrf_token':csrf(client),'operator_password':TEST_OPERATOR_PASSWORD}).status_code == 302
     assert client.get(f'/senders/{identity}/edit').status_code == 404
 
 
@@ -323,11 +328,11 @@ def test_account_endpoints_default_disable_enable_and_delete(db_client, transpor
     assert post(client, f'/senders/{identity}/default',data={'csrf_token':token}).status_code == 302
     assert accounts.list_accounts()[-1]['is_default']
     assert post(client, f'/senders/{identity}/disable',data={'csrf_token':token}).status_code == 302
-    assert b'>Delete</button>' in client.get('/senders').data
+    assert b'data-delete-sender' in client.get('/senders').data
     assert post(client, f'/senders/{identity}/enable',data={'csrf_token':token}).status_code == 302
     assert not accounts.get_account(identity)['verified']
     assert post(client, f'/senders/{identity}/default',data={'csrf_token':token}).status_code == 400
-    assert post(client, f'/senders/{identity}/delete',data={'csrf_token':token}).status_code == 302
+    assert post(client, f'/senders/{identity}/delete',data={'csrf_token':token,'operator_password':TEST_OPERATOR_PASSWORD}).status_code == 302
 
 
 @pytest.mark.parametrize('change', ['approved', 'status', 'authorized'])

@@ -132,17 +132,30 @@
       .querySelectorAll("form[aria-busy]")
       .forEach((form) => form.removeAttribute("aria-busy"));
   });
-  document.querySelectorAll("[data-confirm-delete]").forEach((form) =>
-    form.addEventListener("submit", (event) => {
-      if (
-        !window.confirm(
-          "Delete this sender account? Campaign history will remain readable, but this account will no longer deliver email.",
-        )
-      ) {
+  const deleteDialog = document.querySelector("#sender-delete-dialog");
+  if (deleteDialog && typeof deleteDialog.showModal === "function") {
+    const deleteForm = deleteDialog.querySelector("[data-delete-form]");
+    const password = deleteForm.querySelector('[name="operator_password"]');
+    let deleteTrigger;
+    document.querySelectorAll("[data-delete-sender]").forEach((link) => {
+      link.addEventListener("click", (event) => {
         event.preventDefault();
-        if (loading) loading.hidden = true;
-        form.removeAttribute("aria-busy");
-      }
-    }),
-  );
+        deleteTrigger = link;
+        deleteDialog.querySelector("[data-delete-name]").textContent = link.dataset.senderName;
+        deleteDialog.querySelector("[data-delete-email]").textContent = link.dataset.senderEmail;
+        deleteForm.action = link.href;
+        password.value = "";
+        deleteDialog.showModal();
+        password.focus();
+      });
+    });
+    deleteDialog.querySelector("[data-delete-cancel]").addEventListener("click", (event) => {
+      event.preventDefault();
+      deleteDialog.close();
+    });
+    deleteDialog.addEventListener("close", () => {
+      password.value = "";
+      if (deleteTrigger) deleteTrigger.focus();
+    });
+  }
 })();

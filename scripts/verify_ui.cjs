@@ -136,6 +136,7 @@ const fs = require("fs");
   )
     throw Error("Navigation did not close");
   await page.goto(base + "/templates/new");
+  await page.waitForFunction(() => document.getAnimations().every(animation => animation.playState !== "running"));
   await page.focus("#subject");
   await page.click('[data-token="{{recipient_name}}"]');
   if (
@@ -175,6 +176,54 @@ const fs = require("fs");
       return image && image.complete && image.naturalWidth > 0;
     });
     if (!inlineImage) throw Error('Authenticated preview image did not load');
+  }
+  if (process.env.UI_DELETE_FIXTURE_SENDER_ID) {
+    const identity = process.env.UI_DELETE_FIXTURE_SENDER_ID;
+    const review = await page.goto(base + '/senders');
+    if (review.headers()['x-review-data'] !== 'isolated-automated-fixture')
+      throw Error('Destructive UI checks require the isolated browser fixture');
+    await page.waitForFunction(() => document.getAnimations().every(animation => animation.playState !== 'running'));
+    const selector = `[data-delete-sender][href="/senders/${identity}/delete"]`;
+    for (const width of [1440, 390]) {
+      await page.setViewport({width, height: 1000});
+      await page.click(selector);
+      const details = await page.$eval(selector, link => ({name: link.dataset.senderName, email: link.dataset.senderEmail}));
+      const valid = await page.$eval('#sender-delete-dialog', (dialog, details) =>
+        dialog.open && dialog.querySelector('[data-delete-name]').textContent === details.name &&
+        dialog.querySelector('[data-delete-email]').textContent === details.email &&
+        dialog.textContent.includes('permanently removed') &&
+        dialog.textContent.includes('Historical campaign records') &&
+        dialog.contains(document.activeElement) && dialog.scrollWidth <= dialog.clientWidth, details);
+      if (!valid) throw Error('Sender deletion dialog details, focus or layout failed');
+      await page.addScriptTag({path: require.resolve('axe-core/axe.min.js')});
+      const violations = await page.evaluate(async () => (await axe.run(document, {
+        runOnly: {type: 'tag', values: ['wcag2a','wcag2aa','wcag21aa']}
+      })).violations.map(v => v.id));
+      if (violations.length) throw Error('Deletion dialog accessibility: ' + violations.join(','));
+      await page.screenshot({path: path.join(output, `sender-delete-dialog-${width}.png`), fullPage: true});
+      await page.click('#sender-delete-dialog button[type="submit"]');
+      if (!(await page.$eval('#sender-delete-dialog', d => d.open && d.querySelector('input[type="password"]').validity.valueMissing)))
+        throw Error('Empty password accepted by dialog');
+      await page.type('#operator-delete-password', 'cancel-this-test-value');
+      await page.click('[data-delete-cancel]');
+      if (!(await page.$eval('#sender-delete-dialog', d => !d.open && !d.querySelector('input[type="password"]').value)))
+        throw Error('Cancel did not clear password');
+      await page.click(selector);
+      await page.keyboard.press('Escape');
+      if (!(await page.$eval('#sender-delete-dialog', d => !d.open))) throw Error('Escape did not close dialog');
+    }
+    await page.click(selector);
+    await page.type('#operator-delete-password', 'wrong-fixture-password');
+    await Promise.all([page.waitForNavigation(), page.click('#sender-delete-dialog button[type="submit"]')]);
+    if (!(await page.$eval('[role="alert"]', e => e.textContent.includes('Nothing was deleted'))))
+      throw Error('Wrong password validation missing');
+    if (await page.$eval('#operator-delete-password', e => !!e.value)) throw Error('Password echoed after failure');
+    await page.waitForFunction(() => document.getAnimations().every(animation => animation.playState !== 'running'));
+    await page.type('#operator-delete-password', process.env.UI_OPERATOR_PASSWORD);
+    await Promise.all([page.waitForNavigation(), page.click('[data-delete-form] button[type="submit"]')]);
+    if (new URL(page.url()).pathname !== '/senders' || await page.$(selector))
+      throw Error('Correct-password deletion failed');
+    console.log('PASS: isolated sender deletion dialogs at desktop/mobile, accessibility, cancellation, Escape, missing/wrong/correct password');
   }
   await Promise.all([page.waitForNavigation(), page.click('form[action="/operator/logout"] button')]);
   if (new URL(page.url()).pathname !== '/operator/login') throw Error('Logout failed');
